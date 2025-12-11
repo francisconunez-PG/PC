@@ -1,6 +1,7 @@
 // Método Main para ejecutar la simulación.
-    private int contador = 1;
+    
     public static void main(String[] args) {
+        
         Parque parque = new Parque();
 
         // Iniciar el gestor de horarios del Parque.
@@ -17,7 +18,7 @@
         
         // La tarea de generar visitantes se repite cada X tiempo mientras el ingreso esté abierto.
         generadorVisitantes.scheduleAtFixedRate(new Runnable() {
-                        
+            private int contador = 1;
             public void run() {
                 if (parque.ingresoAbierto) {
                     Visitante nuevoVisitante = new Visitante("Visitante-" + contador++, parque);
