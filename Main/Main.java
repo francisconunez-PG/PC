@@ -1,5 +1,9 @@
 // Método Main para ejecutar la simulación.
-    
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+
+import java.util.concurrent.TimeUnit;
+public class Main {
     public static void main(String[] args) {
         
         Parque parque = new Parque();
@@ -20,7 +24,7 @@
         generadorVisitantes.scheduleAtFixedRate(new Runnable() {
             private int contador = 1;
             public void run() {
-                if (parque.ingresoAbierto) {
+                if (parque.isParqueAbierto()) {
                     Visitante nuevoVisitante = new Visitante("Visitante-" + contador++, parque);
                     new Thread(nuevoVisitante).start();
                 } else {
@@ -39,3 +43,4 @@
         
         System.out.println("--- SIMULACIÓN FINALIZADA ---");
     }
+}

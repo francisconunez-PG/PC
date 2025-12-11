@@ -1,5 +1,4 @@
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+
 import java.util.concurrent.TimeUnit;
 
 public class Parque implements Runnable {
@@ -13,9 +12,9 @@ public class Parque implements Runnable {
     private final JuegoPremios juegoPremios = new JuegoPremios(); // crear esta clase con Exchanger.
 
     // Variables de control de horario.
-    private volatile boolean ingresoAbierto = true; // Cierra 18:00
-    private volatile boolean actividadesAbiertas = true; // Cierra 19:00
-    private volatile boolean parqueAbierto = true; // Cierra 23:00
+    private boolean ingresoAbierto = true; // Cierra 18:00
+    private boolean actividadesAbiertas = true; // Cierra 19:00
+    private boolean parqueAbierto = true; // Cierra 23:00
     private int horaSimulada = 9;
 
     // Métodos Getters.
@@ -26,7 +25,11 @@ public class Parque implements Runnable {
     public RealidadVirtual getRealidadVirtual() { return realidadVirtual; }
     public JuegoPremios getJuegoPremios() { return juegoPremios; }
     public boolean estanActividadesAbiertas() { return actividadesAbiertas; }
-    // ... más getters
+    public boolean isIngresoAbierto() { return ingresoAbierto; }
+    public boolean isActividadesAbiertas() { return actividadesAbiertas; }
+    public boolean isParqueAbierto() { return parqueAbierto; }
+    public int getHoraSimulada() { return horaSimulada; }
+    
 
     // Control de Horarios.
     @Override
@@ -45,5 +48,6 @@ public class Parque implements Runnable {
             Thread.currentThread().interrupt();
         }
     }
+    
 
 }
