@@ -12,7 +12,7 @@ public class AutitosChocadores {
 
     private int contadorPersonas; // Contador de personas esperando.
     private final ReentrantLock candado; // El Lock.
-    private final Condition condicionInicioJuego; // La Condición para el inicio.
+    private final Condition condicionInicioJuego; // La Condición para el inicio(1 sola).
 
     public AutitosChocadores() {
         this.contadorPersonas = 0;

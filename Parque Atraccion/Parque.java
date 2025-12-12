@@ -40,9 +40,9 @@ public class Parque implements Runnable {
                 Thread.sleep(1000); // 1 segundo real = 1 hora simulada.
                 horaSimulada++;
 
-                if (horaSimulada == 18) { ingresoAbierto = false; System.out.println("--- ¡ATENCIÓN! El ingreso al parque ha CERRADO (18:00 hrs). ---"); }
-                if (horaSimulada == 19) { actividadesAbiertas = false; System.out.println("--- ¡ATENCIÓN! Todas las actividades han CERRADO (19:00 hrs). ---"); }
-                if (horaSimulada >= 23) { parqueAbierto = false; System.out.println("--- ¡FIN DE JORNADA! El parque CIERRA completamente (23:00 hrs). ---"); }
+                if (horaSimulada == 18) { ingresoAbierto = false; System.out.println("¡ATENCIÓN! El ingreso al parque ha CERRADO (18:00 hrs)."); }
+                if (horaSimulada == 19) { actividadesAbiertas = false; System.out.println("¡ATENCIÓN! Todas las actividades han CERRADO (19:00 hrs)."); }
+                if (horaSimulada >= 23) { parqueAbierto = false; System.out.println("¡FIN DE JORNADA! El parque CIERRA completamente (23:00 hrs)."); }
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
