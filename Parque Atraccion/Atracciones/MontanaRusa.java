@@ -5,32 +5,27 @@ import java.util.concurrent.Semaphore;
 public class MontanaRusa {
 
     // Variables de Estado.
-    private static final int capacidadCarro = 5; // Requiere 5 personas para iniciar.
-    private static final int salaEspera = 10; // Capacidad de espera limitada.
+    private static final int capacidadCarro = 5;
+    private static final int salaEspera = 10;
 
     private int visitantesEnCarro; // Personas esperando para el viaje actual
-    private final Semaphore semaforoSalaEspera; // Controla el espacio limitado antes de subir.
+    private final Semaphore semaforoSalaEspera; // Controla el espacio limitado.
 
     public MontanaRusa() {
         this.visitantesEnCarro = 0;
-        // Inicializamos el semáforo para la sala de espera
         this.semaforoSalaEspera = new Semaphore(salaEspera);
     }
-
-    /**
-     * Permite a un visitante intentar subir a la montaña rusa.
-     * Si la sala de espera está llena, se va. Si el carro no está lleno espera.
-     */
+    
     public void subir(Visitante visitante) {
         String nombre = visitante.getNombre();
 
         try {
             // Intentar entrar a la sala de espera.
             if (semaforoSalaEspera.tryAcquire()) {
-                // Usar Monitor (synchronized) para subir al carro.
-                synchronized (this) {
-                    System.out.println(nombre + " entra a la sala de espera de la Montaña Rusa. Carro: " + visitantesEnCarro + "/" + capacidadCarro);
+                // Usar Monitor para subir al carro.
                 
+                System.out.println(nombre + " entra a la sala de espera de la Montaña Rusa. Carro: " + visitantesEnCarro + "/" + capacidadCarro);
+                synchronized (this) {
                     // Añadir al carro y esperar a los demas.
                     visitantesEnCarro++;
 

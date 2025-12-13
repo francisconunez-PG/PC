@@ -11,20 +11,15 @@ public class AutitosChocadores {
     private static final int personasRequeridas = autosTotales * personasXAuto; // 20 personas en total.
 
     private int contadorPersonas; // Contador de personas esperando.
-    private final ReentrantLock candado; // El Lock.
-    private final Condition condicionInicioJuego; // La Condición para el inicio(1 sola).
+    private final ReentrantLock candado;
+    private final Condition condicionInicioJuego;
 
     public AutitosChocadores() {
         this.contadorPersonas = 0;
         this.candado = new ReentrantLock();
-        // Inicializamos la condición asociada a este candado.
         this.condicionInicioJuego = candado.newCondition();
     }
-
-    /**
-     * Permite a un visitante esperar y subir a los autitos chocadores.
-     * Requiere exactamente 20 personas para iniciar.
-     */
+    
     public void subir(Visitante visitante) {
         String nombre = visitante.getNombre();
         candado.lock(); // Adquirir el candado.

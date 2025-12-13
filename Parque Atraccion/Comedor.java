@@ -4,15 +4,16 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 public class Comedor {
-
+    // Variables de Estado.
     private static final int capacidadMesa = 4;
-    private static final int capacidadMaxima = 20;
+    private static final int cantidadMesa = 5;
+    private static int contador = 0;
 
-    private final CyclicBarrier barreraInicioComida;
-    private final Semaphore semaforoComedor;
+    private final CyclicBarrier barreraInicioComida; // Sincroniza cuando la mesa se llena.
+    private final Semaphore semaforoComedor; // Controla la capacidad máxima del comedor.
 
     public Comedor() {
-        this.semaforoComedor = new Semaphore(capacidadMaxima);
+        this.semaforoComedor = new Semaphore(capacidadMesa * cantidadMesa);
         
         // Se ejecuta cuando la mesa se llena.
         this.barreraInicioComida = new CyclicBarrier(capacidadMesa, () ->
@@ -42,7 +43,15 @@ public class Comedor {
         } catch (InterruptedException | BrokenBarrierException e) {
             Thread.currentThread().interrupt();
         } finally {
+            contador++;
+            if(contador==4){                    // Suma contador para resetear la barrera cada vez que se llena una mesa.
+                barreraInicioComida.reset();
+                contador=0;                    // Reinicia el contador.
+
+            }
             semaforoComedor.release();
+            
+            
         }
     }
 }

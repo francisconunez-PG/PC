@@ -1,14 +1,14 @@
 import java.util.concurrent.Semaphore;
 
 public class RealidadVirtual {
-
-    private final Semaphore semaforoVisores;
+    // Variables de Estado.
+    private final Semaphore semaforoVisores; // Cantidad de visores VR.
     private final Semaphore semaforoManoplas; // Se requieren 2 permisos.
-    private final Semaphore semaforoBases;
+    private final Semaphore semaforoBases; // Se requiere 1 permiso.
 
     public RealidadVirtual(int cantVisores, int cantManoplas, int cantBases) {
         this.semaforoVisores = new Semaphore(cantVisores);
-        this.semaforoManoplas = new Semaphore(cantManoplas); // Implementar if <2 o multiplo de 2.
+        this.semaforoManoplas = new Semaphore(cantManoplas); // Implementar if multiplo de 2.
         this.semaforoBases = new Semaphore(cantBases);
     }
 
@@ -20,13 +20,13 @@ public class RealidadVirtual {
         boolean baseObtenida = false;
 
         try {
-            // Intentar conseguir todos los recursos. Si uno falla, hay que devolver los anteriores.
+            // Intenta conseguir todos los recursos. Si uno falla, hay que devolver los anteriores.
             
             semaforoVisores.acquire();
             visorObtenido = true;
             System.out.println("[RV]: " + nombre + " consiguió Visor.");
 
-            semaforoManoplas.acquire(2); // Solicita 2 permisos
+            semaforoManoplas.acquire(2); // Solicita 2 permisos.
             manoplasObtenidas = true;
             System.out.println("[RV]: " + nombre + " consiguió Manoplas.");
 
@@ -42,7 +42,7 @@ public class RealidadVirtual {
             System.out.println("[RV]: " + nombre + " interrumpido. Devolviendo equipo.");
             Thread.currentThread().interrupt();
         } finally {
-            // Devolver solo lo que se pudo obtener para evitar errores de semáforo.
+            // Devuelve solo lo que se pudo obtener para evitar errores de semáforo.
             if (visorObtenido) semaforoVisores.release();
             if (manoplasObtenidas) semaforoManoplas.release(2);
             if (baseObtenida) semaforoBases.release();
