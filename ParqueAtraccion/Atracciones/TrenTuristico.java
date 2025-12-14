@@ -1,8 +1,13 @@
+package ParqueAtraccion.Atracciones;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
+
+import hilos.Visitante;
+
 
 public class TrenTuristico implements Runnable {
     // Variables de Estado.

@@ -1,4 +1,9 @@
+package ParqueAtraccion.Atracciones;
+
 import java.util.concurrent.Exchanger;
+
+import hilos.Visitante;
+
 
 public class JuegoPremios {
 

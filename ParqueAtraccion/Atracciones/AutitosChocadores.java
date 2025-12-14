@@ -1,7 +1,10 @@
-package Atracciones;
+package ParqueAtraccion.Atracciones;
 
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+
+import hilos.Visitante;
+
 
 public class AutitosChocadores {
 

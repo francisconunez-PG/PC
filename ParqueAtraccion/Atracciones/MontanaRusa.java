@@ -1,6 +1,9 @@
-package Atracciones;
+package ParqueAtraccion.Atracciones;
 
 import java.util.concurrent.Semaphore;
+
+import hilos.Visitante;
+
 
 public class MontanaRusa {
 

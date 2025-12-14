@@ -1,7 +1,11 @@
+package ParqueAtraccion;
+
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+
+import hilos.Visitante;
 
 public class Comedor {
     // Variables de Estado.

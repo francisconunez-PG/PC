@@ -1,4 +1,8 @@
+package hilos;
+
 import java.util.Random;
+
+import ParqueAtraccion.Parque;
 
 public class Visitante implements Runnable {
 

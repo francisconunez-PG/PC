@@ -1,3 +1,8 @@
+package Main;
+
+import hilos.Visitante;
+import ParqueAtraccion.Parque;
+
 // Método Main para ejecutar la simulación.
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
