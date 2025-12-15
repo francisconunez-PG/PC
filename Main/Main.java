@@ -1,12 +1,9 @@
 package Main;
 
-import hilos.Visitante;
 import ParqueAtraccion.Parque;
-
-// Método Main para ejecutar la simulación.
+import hilos.Visitante;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-
 import java.util.concurrent.TimeUnit;
 public class Main {
     public static void main(String[] args) {
@@ -30,7 +27,7 @@ public class Main {
             private int contador = 1;
             public void run() {
                 if (parque.isParqueAbierto()) {
-                    Visitante nuevoVisitante = new Visitante("Visitante-" + contador++, parque);
+                    Visitante nuevoVisitante = new Visitante("Visitante " + contador++, parque);
                     new Thread(nuevoVisitante).start();
                 } else {
                     // Si el ingreso cerró, detener la generación de visitantes.
@@ -46,6 +43,6 @@ public class Main {
             Thread.currentThread().interrupt();
         }
         
-        System.out.println("--- SIMULACIÓN FINALIZADA ---");
+        System.out.println(" SIMULACIÓN FINALIZADA. EL PARQUE HA CERRADO. ");
     }
 }

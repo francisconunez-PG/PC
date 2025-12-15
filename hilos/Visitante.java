@@ -1,8 +1,7 @@
 package hilos;
 
-import java.util.Random;
-
 import ParqueAtraccion.Parque;
+import java.util.Random;
 
 public class Visitante implements Runnable {
 
@@ -58,7 +57,11 @@ public class Visitante implements Runnable {
                         System.out.println(nombre + " se dirige a la Realidad Virtual.");
                         parque.getRealidadVirtual().participar(this);
                         break;
-                    // Falta Barco Pirata y Espectáculo.
+                    case 6:
+                        System.out.println(nombre + " se dirige al Barco Pirata.");
+                        parque.getBarcoPirata().subir(this);
+                        break;
+
                 }
                 
                 Thread.sleep(aleatorio.nextInt(1000) + 500); // Descansa entre 0.5 y 1.5 segundos.
@@ -70,7 +73,7 @@ public class Visitante implements Runnable {
         } // Fin del ciclo de actividades.
 
         // Salida del parque.
-        System.out.println("--- " + nombre + " ha terminado sus actividades (19:00 hrs) y se dirige a la salida. ---");
+        System.out.println(nombre + " ha terminado sus actividades (19:00 hrs) y se dirige a la salida. ¡Hasta luego!");
         
     }
 }

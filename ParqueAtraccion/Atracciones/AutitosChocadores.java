@@ -5,58 +5,67 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import hilos.Visitante;
 
-
 public class AutitosChocadores {
 
-    // Variables de Estado.
     private static final int autosTotales = 10;
     private static final int personasXAuto = 2;
-    private static final int personasRequeridas = autosTotales * personasXAuto; // 20 personas en total.
+    private static final int personasRequeridas = autosTotales * personasXAuto;
 
-    private int contadorPersonas; // Contador de personas esperando.
-    private final ReentrantLock candado;
-    private final Condition condicionInicioJuego;
+    private int contadorPersonas = 0;
+    private boolean juegoEnCurso = false;
 
-    public AutitosChocadores() {
-        this.contadorPersonas = 0;
-        this.candado = new ReentrantLock();
-        this.condicionInicioJuego = candado.newCondition();
-    }
-    
+    private final ReentrantLock lock = new ReentrantLock();
+    private final Condition puedeIniciar = lock.newCondition();
+
     public void subir(Visitante visitante) {
         String nombre = visitante.getNombre();
-        candado.lock(); // Adquirir el candado.
-        
+        boolean soyElUltimo = false;
+
+        lock.lock();
         try {
-            System.out.println(nombre + "llega a Autitos Chocadores. Esperando: " + contadorPersonas + "/" + personasRequeridas);
-            contadorPersonas++;
+            System.out.println("[AC]: " + nombre + " llega a Autitos Chocadores (" +
+                            contadorPersonas + "/" + personasRequeridas + ")");
 
-            if (contadorPersonas < personasRequeridas) {
-                // Si aún no hay 20 personas, esperar la condición.
-                System.out.println(nombre + " espera a que lleguen los demás para completar los 20.");
-                condicionInicioJuego.await(); // Espera y libera el candado.
-                // Cuando despierta, continúa el viaje.
-                System.out.println(nombre + " despierta. ¡Juego INICIA!");
-
-            } else {
-                // Si el contador llega a 20.
-                System.out.println("¡20 PERSONAS COMPLETAS! Autitos Chocadores... ¡INICIAN JUEGO!");
-                
-                // Despertar a todos los hilos que están esperando.
-                condicionInicioJuego.signalAll();
-                
-                // Simular el juego.
-                Thread.sleep(3000); // 3 segundos de juego.
-                
-                // Reiniciar el estado
-                contadorPersonas = 0;
-                System.out.println("Autitos Chocadores FINALIZAN JUEGO. Reiniciando contador.");
+            while (juegoEnCurso) {
+                puedeIniciar.await();
             }
 
+            contadorPersonas++;
+
+            if (contadorPersonas == personasRequeridas) {
+                juegoEnCurso = true;
+                soyElUltimo = true;
+                System.out.println("[AC]: ¡" + personasRequeridas + " personas para jugar!"
+                                    + " INICIA EL JUEGO. >:D ");
+                puedeIniciar.signalAll();
+            } else {
+                while (!juegoEnCurso) {
+                    puedeIniciar.await();
+                }
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } finally {
-            candado.unlock(); // Se libera el candado.
+            lock.unlock();
+        }
+
+        // JUEGO FUERA DEL LOCK
+        if (soyElUltimo) {
+            try {
+                Thread.sleep(3000);
+                System.out.println("[AC]: Autitos Chocadores FINALIZAN JUEGO");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
+            lock.lock();
+            try {
+                contadorPersonas = 0;
+                juegoEnCurso = false;
+                puedeIniciar.signalAll();
+            } finally {
+                lock.unlock();
+            }
         }
     }
 }

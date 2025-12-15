@@ -1,21 +1,17 @@
 package ParqueAtraccion;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
-import hilos.Visitante;
-
+import ParqueAtraccion.Atracciones.*;
 
 public class Parque implements Runnable {
 
     // Instancias de Atracciones.
     private final MontanaRusa montanaRusa = new MontanaRusa();
-    private final AutitosChocadores autitosChocadores = new AutitosChocadores();
-    private final Comedor comedor = new Comedor();
-    private final TrenTuristico trenTuristico = new TrenTuristico();
+    private final AutitosChocadores autitosChocadores = new AutitosChocadores(); //Usa cerrojo.
+    private final Comedor comedor = new Comedor(); //Usa ciclebarrier.
+    private final TrenTuristico trenTuristico = new TrenTuristico(); // Usa cola de bloqueo.
     private final RealidadVirtual realidadVirtual = new RealidadVirtual(5, 10, 5); // 5 Equipos completos.
-    private final JuegoPremios juegoPremios = new JuegoPremios(); // crear esta clase con Exchanger.
+    private final JuegoPremios juegoPremios = new JuegoPremios(); // Usa exchanger.
+    private final BarcoPirata barcoPirata = new BarcoPirata();
 
     // Variables de control de horario.
     private boolean ingresoAbierto = true; // Cierra 18:00
@@ -30,9 +26,10 @@ public class Parque implements Runnable {
     public TrenTuristico getTrenTuristico() { return trenTuristico; }
     public RealidadVirtual getRealidadVirtual() { return realidadVirtual; }
     public JuegoPremios getJuegoPremios() { return juegoPremios; }
+    public BarcoPirata getBarcoPirata() { return barcoPirata; }
+
     public boolean estanActividadesAbiertas() { return actividadesAbiertas; }
     public boolean isIngresoAbierto() { return ingresoAbierto; }
-    public boolean isActividadesAbiertas() { return actividadesAbiertas; }
     public boolean isParqueAbierto() { return parqueAbierto; }
     public int getHoraSimulada() { return horaSimulada; }
     

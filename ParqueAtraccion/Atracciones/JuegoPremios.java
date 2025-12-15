@@ -1,8 +1,7 @@
 package ParqueAtraccion.Atracciones;
 
-import java.util.concurrent.Exchanger;
-
 import hilos.Visitante;
+import java.util.concurrent.Exchanger;
 
 
 public class JuegoPremios {
@@ -18,13 +17,13 @@ public class JuegoPremios {
 
     public String participar(Visitante visitante, String ficha) {
         try {
-            System.out.println("[JUEGOS] " + visitante.getNombre() + " ofrece su " + ficha + " al Encargado.");
+            System.out.println("[JUEGOS]: " + visitante.getNombre() + " ofrece su " + ficha + " al Encargado.");
             // El visitante espera a que el Encargado le dé el premio a cambio de su ficha.
             String premio = intercambiador.exchange(ficha);
             return premio;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return "Interrupción. No hubo premio. :(";
+            return "[JUEGOS]: Interrupción. No hubo premio. :(";
         }
     }
 
