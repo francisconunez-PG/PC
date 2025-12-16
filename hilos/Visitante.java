@@ -28,7 +28,7 @@ public class Visitante implements Runnable {
         while (parque.estanActividadesAbiertas()) {
             try {
                 // 1. Decidir aleatoriamente qué atracción visitar.
-                int eleccion = aleatorio.nextInt(6); // 0 a 5.
+                int eleccion = aleatorio.nextInt(7); // 0 a 6.
 
                 switch (eleccion) {
                     case 0:
