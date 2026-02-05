@@ -40,7 +40,7 @@ public class Parque implements Runnable {
         // ... Lógica de horaSimulada, cierre a las 18, 19 y 23.
         try {
             while (parqueAbierto) {
-                Thread.sleep(1000); // 1 segundo real = 1 hora simulada.
+                Thread.sleep(5000); // 5 segundo real = 1 hora simulada.
                 horaSimulada++;
 
                 if (horaSimulada == 18) { ingresoAbierto = false; System.out.println("¡ATENCIÓN! El ingreso al parque ha CERRADO (18:00 hrs)."); }

@@ -71,7 +71,8 @@ public class Visitante implements Runnable {
                 break;
             }
         } // Fin del ciclo de actividades.
-
+        //Thread th = Thread.currentThread();
+        //System.out.println("Estado del hilo: " + th.getState());
         // Salida del parque.
         System.out.println(nombre + " ha terminado sus actividades (19:00 hrs) y se dirige a la salida. ¡Hasta luego!");
         
