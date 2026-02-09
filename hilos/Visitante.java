@@ -10,6 +10,8 @@ public class Visitante implements Runnable {
     private final Parque parque; // Gestor de horarios y acceso a atracciones.
     private final Random aleatorio = new Random();
 
+    //ver si se agrega atributos de timeout por atraccion.
+
     // Constructor que recibe el nombre y la referencia al Parque.
     public Visitante(String nombre, Parque parque) {
         this.nombre = nombre;
@@ -37,7 +39,7 @@ public class Visitante implements Runnable {
                         break;
                     case 1:
                         System.out.println(nombre + " se dirige a los Autitos Chocadores.");
-                        parque.getAutitosChocadores().subir(this);
+                        parque.getAutitosChocadores().jugar(this);
                         break;
                     case 2:
                         System.out.println(nombre + " se dirige al Comedor.");

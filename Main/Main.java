@@ -19,7 +19,7 @@ public class Main {
         hiloTren.setDaemon(true); // Se detiene cuando el programa principal termina.
         hiloTren.start();
 
-        // Generar 30 visitantes durante las 9 horas de ingreso (9:00 a 18:00)
+        // Generar 30 visitantes durante las 9 horas de ingreso (9:00 a 18:00).
         ScheduledExecutorService generadorVisitantes = Executors.newSingleThreadScheduledExecutor();
         
         // La tarea de generar visitantes se repite cada X tiempo mientras el ingreso esté abierto.
@@ -28,22 +28,24 @@ public class Main {
             public void run() {
                 if (parque.isIngresoAbierto()) {
                     Visitante nuevoVisitante = new Visitante("Visitante " + contador++, parque);
-                    new Thread(nuevoVisitante).start();
+                    Thread hilo = new Thread(nuevoVisitante);
+                    hilo.setDaemon(true); // Se detiene cuando el programa principal termina.
+                    hilo.start();
                 } else {
                     // Si el ingreso cerró, detener la generación de visitantes.
                     generadorVisitantes.shutdown();
                 }
             }
-        }, 0, 500, TimeUnit.MILLISECONDS); // Generar un visitante cada 0.5 segundos.
+        }, 0, 500, TimeUnit.MILLISECONDS); // Genera un visitante cada 0.5 segundos.
 
-        // Esperar a que el parque cierre.
+        // Espera a que el parque cierre.
         try {
-            hiloParque.join(); // Esperar a que el hilo del parque termine (a las 23:00).
+            hiloParque.join();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
         
         System.out.println(" SIMULACIÓN FINALIZADA. EL PARQUE HA CERRADO. ");
-        System.out.println(Thread.activeCount());
+        System.out.println(Thread.activeCount());  //seguro de hilos.
     }
 }

@@ -1,71 +1,72 @@
 package ParqueAtraccion.Atracciones;
 
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
-
 import hilos.Visitante;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class AutitosChocadores {
 
-    private static final int autosTotales = 10;
-    private static final int personasXAuto = 2;
-    private static final int personasRequeridas = autosTotales * personasXAuto;
+    
+    private final Lock cerrojo = new ReentrantLock();
+    
+    private final Condition esperaJuego = cerrojo.newCondition(); // Condición para esperar a que se llenen los 20 o para esperar a que se vacíe la pista.
+    
+    private int pasajerosActuales = 0;
+    private final int capacidadMaxima = 20;
 
-    private int contadorPersonas = 0;
-    private boolean juegoEnCurso = false;
-
-    private final ReentrantLock lock = new ReentrantLock();
-    private final Condition puedeIniciar = lock.newCondition();
-
-    public void subir(Visitante visitante) {
+    public void jugar(Visitante visitante) {
         String nombre = visitante.getNombre();
-        boolean soyElUltimo = false;
-
-        lock.lock();
+        
+        cerrojo.lock(); //  Bloqueamos.
         try {
-            System.out.println("[AC]: " + nombre + " llega a Autitos Chocadores (" +
-                            contadorPersonas + "/" + personasRequeridas + ")");
-
-            while (juegoEnCurso) {
-                puedeIniciar.await();
+            // Mientras la atraccion esté llena, hace esperar afuera.
+            while (pasajerosActuales >= capacidadMaxima) {
+                esperaJuego.await();
             }
 
-            contadorPersonas++;
+            // Ingreso a la pista.
+            pasajerosActuales++;
+            System.out.println("[AUTITOS]: " + nombre + " eligió su auto (" + pasajerosActuales + "/" + capacidadMaxima + ")");
 
-            if (contadorPersonas == personasRequeridas) {
-                juegoEnCurso = true;
-                soyElUltimo = true;
-                System.out.println("[AC]: ¡" + personasRequeridas + " personas para jugar!"
-                                    + " INICIA EL JUEGO. >:D ");
-                puedeIniciar.signalAll();
-            } else {
-                while (!juegoEnCurso) {
-                    puedeIniciar.await();
+            if (pasajerosActuales < capacidadMaxima) {
+                // Espero a que se llenen los 20.
+                try {
+                    while (pasajerosActuales < capacidadMaxima) {
+                        esperaJuego.await(); // Libera el lock y se duerme.
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                 }
+            } else {
+                // el ultimo(el 20) Arranca el juego.
+                System.out.println("[AUTITOS]: ¡Autos listos! COMIENZAN LOS CHOQUES.");
+                
+                try {
+                    Thread.sleep(2500); // Simulamos el juego.
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                
+                System.out.println("[AUTITOS]: Fin del juego. Todos bajan.");
+                
+                // Despierto a todos los que están durmiendo en el await().
+                esperaJuego.signalAll();
             }
+
+            pasajerosActuales--;
+            System.out.println("[AUTITOS]: " + nombre + " libera su auto.");
+
+            // Si soy el último en irme, dejo la pista vacía para el siguiente grupo.
+            if (pasajerosActuales == 0) {
+                System.out.println("[AUTITOS]: Pista vacía. Listos para el siguiente grupo.");
+                esperaJuego.signalAll(); // Aviso a los que esperaban entrar al principio. <-pensar con otra condicion.
+            }
+
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } finally {
-            lock.unlock();
-        }
-
-        // JUEGO FUERA DEL LOCK
-        if (soyElUltimo) {
-            try {
-                Thread.sleep(3000);
-                System.out.println("[AC]: Autitos Chocadores FINALIZAN JUEGO");
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-
-            lock.lock();
-            try {
-                contadorPersonas = 0;
-                juegoEnCurso = false;
-                puedeIniciar.signalAll();
-            } finally {
-                lock.unlock();
-            }
+            cerrojo.unlock(); //libero el lock.
         }
     }
 }

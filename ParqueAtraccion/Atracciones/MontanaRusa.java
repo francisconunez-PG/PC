@@ -1,5 +1,6 @@
 package ParqueAtraccion.Atracciones;
 
+import ParqueAtraccion.Parque;
 import hilos.Visitante;
 import java.util.concurrent.Semaphore;
 
@@ -15,7 +16,7 @@ public class MontanaRusa {
     
     private final Semaphore semaforoSalaEspera; // Controla el espacio limitado.
     
-    public MontanaRusa() {
+    public MontanaRusa(Parque parque) {
         this.visitantesEnCarro = 0;
         this.semaforoSalaEspera = new Semaphore(salaEspera);
     }

@@ -5,19 +5,31 @@ import ParqueAtraccion.Atracciones.*;
 public class Parque implements Runnable {
 
     // Instancias de Atracciones.
-    private final MontanaRusa montanaRusa = new MontanaRusa();
-    private final AutitosChocadores autitosChocadores = new AutitosChocadores(); //Usa cerrojo.
+    private final MontanaRusa montanaRusa;  // Usa monitor y semáforo para sala de espera.
+    private final AutitosChocadores autitosChocadores; //Usa cerrojo.
     private final Comedor comedor = new Comedor(); //Usa ciclebarrier.
-    private final TrenTuristico trenTuristico = new TrenTuristico(); // Usa cola de bloqueo.
+    private final TrenTuristico trenTuristico; // Usa cola de bloqueo.
     private final RealidadVirtual realidadVirtual = new RealidadVirtual(5, 10, 5); // 5 Equipos completos.
     private final JuegoPremios juegoPremios = new JuegoPremios(); // Usa exchanger.
-    private final BarcoPirata barcoPirata = new BarcoPirata();
+    private final BarcoPirata barcoPirata;  // Usa semáforo para asientos y monitor para iniciar viaje.
 
     // Variables de control de horario.
     private boolean ingresoAbierto = true; // Cierra 18:00
     private boolean actividadesAbiertas = true; // Cierra 19:00
     private boolean parqueAbierto = true; // Cierra 23:00
     private int horaSimulada = 9;
+
+    public Parque() {
+        // Pasamos 'this' a las clases que necesitan chequear el cierre del parque
+        this.montanaRusa = new MontanaRusa(this);
+        this.barcoPirata = new BarcoPirata(this);
+        this.trenTuristico = new TrenTuristico(this);
+        
+        
+        // Las que no necesitan la referencia (o no la usan aún) se pueden inicializar normal
+        this.autitosChocadores = new AutitosChocadores();
+        
+    }
 
     // Métodos Getters.
     public MontanaRusa getMontanaRusa() { return montanaRusa; }
@@ -51,6 +63,4 @@ public class Parque implements Runnable {
             Thread.currentThread().interrupt();
         }
     }
-    
-
 }
