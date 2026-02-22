@@ -26,10 +26,10 @@ public class Main {
         generadorVisitantes.scheduleAtFixedRate(new Runnable() {
             private int contador = 1;
             public void run() {
-                if (parque.isIngresoAbierto()) {
+                if (Thread.activeCount() < 20) { // Verificar si el ingreso aún está abierto (más de 2 hilos activos: main + parque).
                     Visitante nuevoVisitante = new Visitante("Visitante " + contador++, parque);
                     Thread hilo = new Thread(nuevoVisitante);
-                    hilo.setDaemon(true); // Se detiene cuando el programa principal termina.
+                    //hilo.setDaemon(true); // Se detiene cuando el programa principal termina.
                     hilo.start();
                 } else {
                     // Si el ingreso cerró, detener la generación de visitantes.

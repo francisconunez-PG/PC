@@ -60,7 +60,7 @@ public class AutitosChocadores {
             // Si soy el último en irme, dejo la pista vacía para el siguiente grupo.
             if (pasajerosActuales == 0) {
                 System.out.println("[AUTITOS]: Pista vacía. Listos para el siguiente grupo.");
-                esperaJuego.signalAll(); // Aviso a los que esperaban entrar al principio. <-pensar con otra condicion.
+                esperaJuego.signalAll(); // Aviso a los que esperaban entrar al principio. <-pensar con   otra condicion.
             }
 
         } catch (InterruptedException e) {
