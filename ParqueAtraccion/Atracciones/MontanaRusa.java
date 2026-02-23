@@ -3,86 +3,46 @@ package ParqueAtraccion.Atracciones;
 import ParqueAtraccion.Parque;
 import hilos.Visitante;
 import java.util.concurrent.Semaphore;
-
+import java.util.concurrent.TimeUnit;
 
 public class MontanaRusa {
 
-    // Variables de Estado.
-    private static final int capacidadCarro = 5;
-    private static final int salaEspera = 10;
+    // Supongamos que el carrito tiene 8 lugares (podés cambiar el número)
+    private final Semaphore carrito = new Semaphore(8, true);
+    private final Parque parque;
 
-    private int visitantesEnCarro; // Personas esperando para el viaje actual
-    private boolean viajeEnCurso = false; // Indica si el viaje está en curso.
-    
-    private final Semaphore semaforoSalaEspera; // Controla el espacio limitado.
-    
     public MontanaRusa(Parque parque) {
-        this.visitantesEnCarro = 0;
-        this.semaforoSalaEspera = new Semaphore(salaEspera);
+        this.parque = parque;
     }
-    
+
     public void subir(Visitante visitante) {
         String nombre = visitante.getNombre();
+        boolean consiguioLugar = false;
 
         try {
-            // Intentar entrar a la sala de espera.
-            if (semaforoSalaEspera.tryAcquire()) {
-                // Usar Monitor para subir al carro.
-                
-                System.out.println("[MR]: " + nombre + " entra a la sala de espera de la Montaña Rusa. Carro: " + visitantesEnCarro + "/" + capacidadCarro);
-                boolean soyElUltimo = false;
+            // Solo hace fila si está abierto
+            if (parque.estanActividadesAbiertas()) {
+                System.out.println("[MONTAÑA RUSA]: " + nombre + " hace fila para subir al carrito.");
 
-                synchronized (this) {
-                visitantesEnCarro++;
-                System.out.println("[MR]: " + nombre + " sube al carro (" +
-                        visitantesEnCarro + "/" + capacidadCarro + ")");
+                // Intenta subir. Si pasan 2 segundos, vuelve a mirar la hora.
+                while (!consiguioLugar && parque.estanActividadesAbiertas()) {
+                    consiguioLugar = carrito.tryAcquire(2, TimeUnit.SECONDS);
+                }
 
-                if (visitantesEnCarro == capacidadCarro) {
-                    // Este hilo inicia el viaje.
-                    viajeEnCurso = true;
-                    soyElUltimo = true;
-                    notifyAll(); // despierta a los demás.
+                if (consiguioLugar) {
+                    System.out.println("[MONTAÑA RUSA]: " + nombre + " se subió a la Montaña Rusa. ¡Aaaaaah!");
+                    Thread.sleep(3000); // Duración del viaje
+                    System.out.println("[MONTAÑA RUSA]: " + nombre + " se bajó mareado pero feliz.");
                 } else {
-                    // Espera a que el carro se llene.
-                    while (!viajeEnCurso) {
-                        wait();
-                    }
+                    System.out.println("[MONTAÑA RUSA]: " + nombre + " se fue de la fila porque cerraron.");
                 }
             }
-
-            // El último ejecuta el viaje.
-            if (soyElUltimo) {
-                System.out.println("[MR]: carro lleno. ¡INICIA EL VIAJE!");
-                Thread.sleep(2000);
-                System.out.println("[MR]: VIAJE FINALIZADO.");
-
-                // Reiniciar estado.
-                synchronized (this) {
-                    visitantesEnCarro = 0;
-                    viajeEnCurso = false;
-                    notifyAll(); // permite que todos bajen
-                }
-            } else {
-                // Los demás esperan a que termine el viaje
-                synchronized (this) {
-                    while (viajeEnCurso) {
-                        wait();
-                    }
-                }
-            }
-
-            System.out.println("[MR] " + nombre + " baja del carro.");
-            }else{
-                // Se va si no hay espacio en la sala de espera.
-                System.out.println("[MR]: " +nombre + " encuentra la sala de espera llena y decide no subir a la Montaña Rusa.");
-                
-            }
-            
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } finally {
-            // Liberar el espacio en la sala de espera al finalizar.
-            semaforoSalaEspera.release();
+            if (consiguioLugar) {
+                carrito.release();
+            }
         }
     }
 }

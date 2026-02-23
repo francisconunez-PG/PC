@@ -10,9 +10,8 @@ public class BarcoPirata {
     private static final long tiempoEspera = 4000;
 
     private final Semaphore asientos = new Semaphore(capacidad, true);
-    private final Parque parque; // Quitamos 'static' si no es necesario
+    private final Parque parque;
     private int pasajeros = 0;
-    
     private boolean viajeEnCurso = false;
 
     public BarcoPirata(Parque parque) {
@@ -23,77 +22,57 @@ public class BarcoPirata {
         String nombre = visitante.getNombre();
 
         try {
-            asientos.acquire(); // 1. Agarran ticket
+            asientos.tryAcquire(); // Intentan conseguir asiento.
 
-            boolean soyElCapitan = false; // Variable local para identificar al que arranca
+            boolean soyElCapitan = false;
 
             synchronized (this) {
                 pasajeros++;
                 System.out.println("[BP]: " + nombre + " sube (" + pasajeros + "/" + capacidad + ")");
 
-                // Lógica de llenado o Timeout
                 long inicio = System.currentTimeMillis();
                 long restante = tiempoEspera;
 
-                // Esperamos si NO estamos llenos Y NO hay viaje en curso Y el parque sigue abierto
+                // Esperan mientras no esté lleno, el barco no haya salido y el parque siga abierto.
                 while (pasajeros < capacidad && !viajeEnCurso && parque.estanActividadesAbiertas() && restante > 0) {
-                    
+                    wait(restante);
                     restante = tiempoEspera - (System.currentTimeMillis() - inicio);
-                    
-                    if (restante <= 0) {
-                        System.out.println("[BP]: Tiempo de espera agotado. Salimos con: " + pasajeros);
-                        
-                    }else{
-                        wait(restante);
-                    }
-                    // Al despertar, los hilos chequean si el parque cerró.
-                    if (!parque.estanActividadesAbiertas() && !viajeEnCurso) {
-                        System.out.println("[BP]: " + nombre + " se baja porque el parque cerró.");
-                        pasajeros--;
-                        asientos.release();
-                        notifyAll(); // Avisamos a otros para que no esperen el timeout.
-                        return; // Salimos del método porque el parque cerró. <--- preguntar si se puede hacer esto o si es mejor usar un flag para que el hilo sepa que no debe seguir esperando.
-                    }
                 }
 
-                // Verificamos si nos toca iniciar el viaje
-                if (!viajeEnCurso && pasajeros > 0) {
+                // Si no arrancó y todavía es horario, este hilo se hace cargo de iniciar el viaje.
+                if (!viajeEnCurso && parque.estanActividadesAbiertas()) {
                     viajeEnCurso = true;
-                    soyElCapitan = true; // hilo que inicia el viaje como "capitan".
+                    soyElCapitan = true;
                     notifyAll();
                 }
-
                 
-                // El capitán, NO espera. tripulaciòn, espera.
+                // Los pasajeros normales esperan a que el capitan termine el viaje.
                 while (viajeEnCurso && !soyElCapitan) {
                     wait();
                 }
-                
-                
             }
 
-            
-            if (soyElCapitan) { // Solo el capitán simula el viaje. Los demás esperan a que termine.
+            if (soyElCapitan) {
                 System.out.println("[BP]: --- Barco Pirata INICIA viaje ---");
                 Thread.sleep(3000);
                 System.out.println("[BP]: --- Barco Pirata FINALIZA viaje ---");
 
                 synchronized (this) {
                     viajeEnCurso = false;
-                    notifyAll(); // Despierta a los pasajeros para que bajen
+                    notifyAll(); // Despierta a todos para que se bajen.
                 }
             }
             
-            // Todos los pasajeros, incluido el capitán, bajan después del viaje.
+            // Bajada y salida del barco.
             synchronized (this) {
-                asientos.release();
                 pasajeros--;
                 System.out.println("[BP]: " + nombre + " baja del barco.");
+                
+                // Suelta el permiso del semáforo recién cuando baja.
+                asientos.release();
 
-                // El último libera los tickets para el siguiente grupo.
                 if (pasajeros == 0) {
-                    System.out.println("[BP]: Barco vacío. Tickets liberados.");
-                    
+                    System.out.println("[BP]: Barco vacío. Listos para la siguiente vuelta.");
                 }
             }
 

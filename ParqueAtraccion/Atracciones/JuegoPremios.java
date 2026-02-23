@@ -1,72 +1,85 @@
 package ParqueAtraccion.Atracciones;
 
+import ParqueAtraccion.Parque;
 import hilos.Visitante;
-import java.util.concurrent.Exchanger;
-import java.util.concurrent.Semaphore;
 
 public class JuegoPremios {
 
-    // El Exchanger intercambia un String (Ficha) por otro String (Premio).
-    private final Exchanger<String> intercambiador;
+    private final Parque parque;
+    private int visitantesEsperando = 0;
+    private boolean puestoOcupado = false;
 
-    // Semáforo para asegurar que sea Visitante vs Encargado, y no Visitante vs Visitante.
-    private final Semaphore mutex;
-
-    public JuegoPremios() {
-        this.intercambiador = new Exchanger<>();
-        this.mutex = new Semaphore(1, true);
-
-        // El encargado del juego debe ser un hilo aparte que espera el intercambio. <-- Crear otra clase o así esta bien?.
-        Thread tEncargado = new Thread(new EncargadoJuegos(intercambiador));
-        tEncargado.setDaemon(true); // Para que el hilo muera si se cierra el programa.
-        tEncargado.start();
+    public JuegoPremios(Parque parque) {
+        this.parque = parque;
     }
 
-    public String participar(Visitante visitante, String ficha) {
-        String premio = "";
+    // Método que ejecutan los visitantes
+    public synchronized void jugar(Visitante visitante) {
+        String nombre = visitante.getNombre();
         try {
-            // Bloqueamos para que nadie más interrumpa el intercambio.
-            mutex.acquire();
+            if (parque.estanActividadesAbiertas()) {
+                System.out.println("[PREMIOS]: " + nombre + " hace fila para jugar a los dardos.");
+                visitantesEsperando++;
+                notifyAll(); // Despierta al encargado si estaba durmiendo
 
-            System.out.println("[JUEGO]: " + visitante.getNombre() + " ofrece su " + ficha + " al Encargado.");
-            
-            // El visitante espera a que el Encargado le dé el premio.
-            premio = intercambiador.exchange(ficha);
-            
+                boolean esperandoTurno = true;
+
+                while (esperandoTurno) {
+                    // Si el parque cierra mientras hacía fila, se va.
+                    if (!parque.estanActividadesAbiertas()) {
+                        visitantesEsperando--;
+                        System.out.println("[PREMIOS]: " + nombre + " se fue de la fila porque cerraron el puesto.");
+                        esperandoTurno = false;
+                    } 
+                    // Si el puesto se libera, le toca jugar.
+                    else if (!puestoOcupado) {
+                        puestoOcupado = true;
+                        visitantesEsperando--;
+                        esperandoTurno = false;
+                    } 
+                    // Si está ocupado, espera 2 segundos y vuelve a chequear.
+                    else {
+                        wait(2000);
+                    }
+                }
+
+                // Juega solo si el puesto quedó ocupado por él (es decir, no se fue por cierre)
+                if (puestoOcupado && parque.estanActividadesAbiertas()) {
+                    System.out.println("[PREMIOS]: " + nombre + " está tirando los dardos...");
+                    Thread.sleep(2000); // Tiempo que tarda en jugar
+                    System.out.println("[PREMIOS]: " + nombre + " terminó de jugar y se lleva un peluche.");
+                    
+                    puestoOcupado = false;
+                    notifyAll(); // Le avisa al próximo en la fila
+                }
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            premio = "[JUEGO]: Interrupción. No hubo premio. :,(";
-        } finally {
-            
-            mutex.release();
         }
-        return premio;
     }
 
-    // Hilo interno que simula al empleado.
-    private static class EncargadoJuegos implements Runnable {
-        private final Exchanger<String> intercambiador;
+    // Método que ejecuta el hilo Encargado (Daemon)
+    public void atender() {
+        System.out.println("[ENCARGADO PREMIOS]: Listo para repartir peluches.");
+        try {
+            while (parque.estanActividadesAbiertas()) {
+                synchronized (this) {
+                    // Si no hay nadie, el encargado espera 2 segundos y revisa la hora.
+                    while (visitantesEsperando == 0 && parque.estanActividadesAbiertas()) {
+                        wait(2000);
+                    }
 
-        public EncargadoJuegos(Exchanger<String> hilo) {
-            this.intercambiador = hilo;
-        }
-
-        @Override
-        public void run() {
-            try {
-                while (true) {
-                    // El encargado espera recibir ficha y entrega premio.
-                    // Se bloqueará aquí hasta que llegue un visitante con el mutex.
-                    String fichaRecibida = intercambiador.exchange("Osito de Peluche, Muñeco de Acción, Globo");
-                    
-                    System.out.println("[JUEGO]: Recibí " + fichaRecibida + ". Entregué premio. :D");
-                    
-                    // Simula tiempo de acomodar la ficha.
-                    Thread.sleep(500);
+                    if (visitantesEsperando > 0 && parque.estanActividadesAbiertas()) {
+                        // El encargado simplemente observa cómo juegan (el tiempo lo maneja el visitante).
+                        notifyAll();
+                    }
                 }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+                Thread.sleep(500); // Pequeña pausa del encargado.
             }
+            System.out.println("[ENCARGADO PREMIOS]: Cierro el puesto y me voy.");
+        } catch (InterruptedException e) {
+            System.out.println("[ENCARGADO PREMIOS]: Interrumpido.");
+            Thread.currentThread().interrupt();
         }
     }
 }

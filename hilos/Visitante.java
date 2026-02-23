@@ -5,14 +5,10 @@ import java.util.Random;
 
 public class Visitante implements Runnable {
 
-    //Variables de Estado.
     private final String nombre;
-    private final Parque parque; // Gestor de horarios y acceso a atracciones.
-    private final Random aleatorio = new Random();
+    private final Parque parque;
+    private final Random random = new Random();
 
-    //ver si se agrega atributos de timeout por atraccion.
-
-    // Constructor que recibe el nombre y la referencia al Parque.
     public Visitante(String nombre, Parque parque) {
         this.nombre = nombre;
         this.parque = parque;
@@ -24,67 +20,45 @@ public class Visitante implements Runnable {
 
     @Override
     public void run() {
-        System.out.println(nombre + " ha ingresado al parque a través de un molinete.");
+        System.out.println("[INGRESO]: " + nombre + " entró al parque.");
 
-        // El visitante se mueve por el parque mientras las actividades estén abiertas.
         try {
+            // Sigue dando vueltas mientras las atracciones sigan abiertas.
             while (parque.estanActividadesAbiertas()) {
-                try {
-                    // Decidir aleatoriamente qué atracción visitar.
-                    int eleccion = aleatorio.nextInt(7); // 0 a 6.
-
-                    switch (eleccion) {
-                        case 0:
-                            System.out.println(nombre + " se dirige a la Montaña Rusa.");
-                            parque.getMontanaRusa().subir(this);
-                            break;
-                        case 1:
-                            System.out.println(nombre + " se dirige a los Autitos Chocadores.");
-                            parque.getAutitosChocadores().jugar(this);
-                            break;
-                        case 2:
-                            System.out.println(nombre + " se dirige al Comedor.");
-                            parque.getComedor().almorzar(this);
-                            break;
-                        case 3:
-                            System.out.println(nombre + " se dirige a la cola del Tren Turístico.");
-                            parque.getTrenTuristico().subirAlTren(this);
-                            break;
-                        case 4:
-                            System.out.println(nombre + " se dirige al Área de Juegos de Premios (Exchanger).");
-                            // Aquí simulamos el intercambio de una ficha por un premio.
-                            String premioObtenido = parque.getJuegoPremios().participar(this, "Ficha de " + nombre);
-                            System.out.println(nombre + " obtuvo un " + premioObtenido + " en el juego.");
-                            break;
-                        case 5:
-                            System.out.println(nombre + " se dirige a la Realidad Virtual.");
-                            parque.getRealidadVirtual().participar(this);
-                            break;
-                        case 6:
-                            System.out.println(nombre + " se dirige al Barco Pirata.");
-                            parque.getBarcoPirata().subir(this);
-                            break;
-                    }
                 
-                Thread.sleep(aleatorio.nextInt(1000) + 500); // Descansa entre 0.5 y 1.5 segundos.
-                System.out.println(nombre + ": me voy a otro circuito del parque.");
-    
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
-        }
-        } catch (Exception e) {
-            Thread.currentThread().interrupt();
-        } finally {
-            // Fin del ciclo de actividades.
-        //Thread th = Thread.currentThread();
-        //System.out.println("Estado del hilo: " + th.getState());
-        // Salida del parque.
-            System.out.println(nombre + " ha terminado sus actividades (19:00 hrs) y se dirige a la salida. ¡Hasta luego!");
-        }
+                int eleccion = random.nextInt(5);
 
-        
-        
+                switch (eleccion) {
+                    case 0:
+                        parque.getTrenTuristico().subir(this);
+                        break;
+                    case 1:
+                        parque.getAutitosChocadores().jugar(this);
+                        break;
+                    case 2:
+                        parque.getBarcoPirata().subir(this);
+                        break;
+                    case 3:
+                        parque.getMontanaRusa().subir(this);
+                        break;
+                    case 4:
+                        parque.getRealidadVirtual().jugar(this);
+                        break;
+                }
+
+                // Si salió del juego y el parque sigue abierto, camina un rato hasta el próximo.
+                if (parque.estanActividadesAbiertas()) {
+                    Thread.sleep(1000 + random.nextInt(2000));
+                }
+            }
+
+            System.out.println("[SALIDA]: " + nombre + " se va del parque porque cerraron las atracciones.");
+
+        } catch (InterruptedException e) {
+            System.out.println("[SALIDA]: " + nombre + " fue interrumpido y se va.");
+            Thread.currentThread().interrupt();
+        }
     }
 }
+
+

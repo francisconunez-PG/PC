@@ -1,63 +1,73 @@
 package ParqueAtraccion.Atracciones;
 
+import ParqueAtraccion.Parque;
 import hilos.Visitante;
 import java.util.concurrent.Semaphore;
 
 public class RealidadVirtual {
-    // Variables de Estado.
-    private final Semaphore semaforoVisores; // Cantidad de visores VR.
-    private final Semaphore semaforoManoplas; // Se requieren 2 permisos.
-    private final Semaphore semaforoBases; // Se requiere 1 permiso.
-    private final Semaphore guardia = new Semaphore(1, true);
-    public RealidadVirtual(int cantVisores, int cantManoplas, int cantBases) {
-        this.semaforoVisores = new Semaphore(cantVisores);
-        this.semaforoManoplas = new Semaphore(cantManoplas); // Implementar if multiplo de 2.
-        this.semaforoBases = new Semaphore(cantBases);
+
+    private static final int visoresDisponibles = 10;
+    private static final int manoplasDisponibles = 10;
+
+    private final Semaphore visores;
+    private final Semaphore manoplas;
+    
+    // Semáforo para que pasen de a uno a buscar el equipo y no se traben.
+    private final Semaphore guardia;
+    private final Parque parque;
+
+    public RealidadVirtual(Parque parque) {
+        this.parque = parque;
+        this.visores = new Semaphore(visoresDisponibles, true);
+        this.manoplas = new Semaphore(manoplasDisponibles, true);
+        this.guardia = new Semaphore(1, true);
     }
 
-    public void participar(Visitante visitante) {
+    public void jugar(Visitante visitante) {
         String nombre = visitante.getNombre();
         
-        boolean visorObtenido = false;
-        boolean manoplasObtenidas = false;
-        boolean baseObtenida = false;
+        boolean tieneVisor = false;
+        boolean tieneManopla = false;
 
         try {
-            guardia.acquire(); // Asegura que solo un visitante intente conseguir recursos a la vez.
-            // Intenta conseguir todos los recursos. Si uno falla, hay que devolver los anteriores.
-            
-            semaforoVisores.acquire();
-            try{
-                visorObtenido = true;
-                System.out.println("[RV]: " + nombre + " consiguió Visor.");
+            System.out.println("[RV]: " + nombre + " hace fila para agarrar equipo.");
 
-                semaforoManoplas.acquire(2); // Solicita 2 permisos.
-                manoplasObtenidas = true;
-                System.out.println("[RV]: " + nombre + " consiguió Manoplas.");
-
-                semaforoBases.acquire();
-                baseObtenida = true;
-                System.out.println("[RV]: " + nombre + " inicia actividad de RV con equipo completo.");
+            guardia.tryAcquire();
+            try {
+                // Verifico que haya equipo completo antes de agarrar.
+                if (visores.availablePermits() > 0 && manoplas.availablePermits() > 0) {
+                    visores.tryAcquire();
+                    tieneVisor = true;
+                    
+                    manoplas.tryAcquire();
+                    tieneManopla = true;
+                    
+                    System.out.println("[RV]: " + nombre + " consiguio visor y manopla. Entrando al juego...");
+                } else {
+                    System.out.println("[RV]: " + nombre + " vio que faltan equipos y se fue.");
+                }
             } finally {
-                guardia.release(); // Libera el guardia para que otro visitante pueda intentar.
+                // Libero al guardia rápido para que pase el siguiente.
+                guardia.release();
             }
 
-        System.out.println("[RV]: " + nombre + " inicia actividad.");
+            // A jugar, solo si consiguió las dos cosas.
+            if (tieneVisor && tieneManopla) {
+                System.out.println("[RV]: " + nombre + " esta jugando en la sala VR.");
+                Thread.sleep(3000); // Simula el tiempo de juego.
+                System.out.println("[RV]: " + nombre + " termino de jugar. Devolviendo equipo...");
+            }
 
-        Thread.sleep(2500);
-
-        System.out.println("[RV]: " + nombre + " finaliza actividad.");
-        
         } catch (InterruptedException e) {
-            System.out.println("[RV]: " + nombre + " interrumpido. Devolviendo equipo.");
             Thread.currentThread().interrupt();
         } finally {
-            // Devuelve solo lo que se pudo obtener para evitar errores de semáforo.
-            if (visorObtenido) semaforoVisores.release();
-
-            if (manoplasObtenidas) semaforoManoplas.release(2);
-            
-            if (baseObtenida) semaforoBases.release();
+            // Devuelvo las cosas para el que sigue.
+            if (tieneManopla) {
+                manoplas.release();
+            }
+            if (tieneVisor) {
+                visores.release();
+            }
         }
     }
 }

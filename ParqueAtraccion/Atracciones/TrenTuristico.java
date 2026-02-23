@@ -2,47 +2,52 @@ package ParqueAtraccion.Atracciones;
 
 import ParqueAtraccion.Parque;
 import hilos.Visitante;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeUnit;
 
 public class TrenTuristico implements Runnable {
 
-    private static final int capacidadTren = 10;
-    private final BlockingQueue<Visitante> colaPasajeros;
+    private final Parque parque;
+    private final int capacidadTren = 15;
+    private int pasajerosActuales = 0;
+    private boolean viajeEnCurso = false;
 
     public TrenTuristico(Parque parque) {
-        this.colaPasajeros = new ArrayBlockingQueue<>(capacidadTren * 2 , true);
-        //preguntar si es mejor crear un hilo tipo chofer.
-        new Thread(this, "Chofer-Tren").start();
+        this.parque = parque;
     }
 
-    
-
-    public void subirAlTren(Visitante visitante) {
+    public synchronized void subir(Visitante visitante) {
         String nombre = visitante.getNombre();
         try {
-            System.out.println("[TREN]: " + nombre + " llega al andén.");
-
-            // Se Pone en la cola.
-            // Usamos put() en vez de offer() para que si el andén está lleno, espere un poco
-            // en lugar de irse inmediatamente.
-
-            colaPasajeros.put(visitante);
-            
-            System.out.println("[TREN]: " + nombre + " ya está en la fila. Esperando salir...");
-
-            
-            // El visitante se duerme aquí hasta que el Chofer le avise que el viaje terminó.
-            synchronized (visitante) {
-                visitante.wait();
+            // Si está lleno o paseando, toca esperar.
+            while ((pasajerosActuales >= capacidadTren || viajeEnCurso) && parque.estanActividadesAbiertas()) {
+                wait(2000);
             }
 
-            // Despierta cuando el Chofer hace notify().
-            System.out.println("[TREN]: " + nombre + " baja del tren feliz.");
+            if (!parque.estanActividadesAbiertas()) {
+                System.out.println("[TREN]: " + nombre + " vio que el tren cerro y se fue.");
+            } else {
+                pasajerosActuales++;
+                System.out.println("[TREN]: " + nombre + " subio al tren (" + pasajerosActuales + "/" + capacidadTren + ")");
+                
+                // Le aviso al chofer que hay gente.
+                notifyAll();
 
+                boolean esperandoViaje = true;
+                
+                while (esperandoViaje) {
+                    // Si el parque cierra antes de que el tren arranque, se bajan todos.
+                    if (!viajeEnCurso && !parque.estanActividadesAbiertas()) {
+                        pasajerosActuales--;
+                        System.out.println("[TREN]: " + nombre + " se baja porque cerraron antes de arrancar.");
+                        esperandoViaje = false;
+                    } else if (!viajeEnCurso && pasajerosActuales == 0) {
+                        // El viaje terminó (el chofer pone los pasajeros en 0).
+                        System.out.println("[TREN]: " + nombre + " se bajo del tren.");
+                        esperandoViaje = false;
+                    } else {
+                        wait(2000);
+                    }
+                }
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -50,45 +55,37 @@ public class TrenTuristico implements Runnable {
 
     @Override
     public void run() {
+        System.out.println("[CHOFER]: Tren listo para arrancar la jornada.");
         try {
-            while (true) {
+            while (parque.estanActividadesAbiertas()) {
+                synchronized (this) {
+                    // Espera a que se suba alguien para arrancar.
+                    while (pasajerosActuales == 0 && parque.estanActividadesAbiertas()) {
+                        wait(2000);
+                    }
 
-                System.out.println("[TREN]: Tren esperando al primer pasajero...");
-                
-                // Espera al menos un pasajero.
-                Visitante primero = colaPasajeros.take();
-                List<Visitante> pasajeros = new ArrayList<>();
-                pasajeros.add(primero); // Pasajero se sube al tren.
+                    if (pasajerosActuales > 0 && parque.estanActividadesAbiertas()) {
+                        viajeEnCurso = true;
+                        System.out.println("[CHOFER]: Arrancando el tren con " + pasajerosActuales + " pasajeros.");
+                    }
+                }
 
-
-                long inicio = System.currentTimeMillis();
-                long espera = 5000; // 5 segundos
-                long restante = espera;
-                while (pasajeros.size() < capacidadTren && restante > 0) { //fijarme bien como funca
-                    restante = espera - (System.currentTimeMillis() - inicio);
-
-                    if (restante > 0){
-
-                        Visitante siguiente = colaPasajeros.poll(restante, TimeUnit.MILLISECONDS);
-                        if (siguiente != null) pasajeros.add(siguiente);
+                if (viajeEnCurso) {
+                    Thread.sleep(4000); // Simulamos el recorrido del tren.
+                    
+                    synchronized (this) {
+                        System.out.println("[CHOFER]: Fin del recorrido. Todos abajo.");
+                        viajeEnCurso = false;
+                        pasajerosActuales = 0;
                         
+                        // Aviso para que se bajen los que estaban arriba.
+                        notifyAll();
                     }
                 }
-
-                System.out.println("[TREN]: Tren parte con " + pasajeros.size() + " pasajeros.");
-                Thread.sleep(2000);
-                System.out.println("[TREN]: Tren regresa a la estación.");
-                // Avisar a todos los pasajeros que el viaje terminó.
-                for (int i = 0; i < pasajeros.size(); i++) {
-                    Visitante v = pasajeros.get(i);
-                    synchronized (v) {
-                    v.notify();
-                    }
-                }
-                pasajeros.clear(); // Limpia la lista para el próximo viaje.
             }
-
+            System.out.println("[CHOFER]: Termino mi turno. Tren a la cochera.");
         } catch (InterruptedException e) {
+            System.out.println("[CHOFER]: Interrumpido. Me voy a casa.");
             Thread.currentThread().interrupt();
         }
     }

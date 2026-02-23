@@ -1,64 +1,47 @@
 package ParqueAtraccion;
 
 import hilos.Visitante;
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Semaphore;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.TimeUnit;
 
 public class Comedor {
 
-    private static final int mesas = 5;
-    private static final int capacidadMesa = 4;
-    private final Semaphore lugarDisponibles;
-    private final CyclicBarrier barreraMesa;
+    // Capacidad de mesas en el patio de comidas.
+    private final Semaphore mesas = new Semaphore(15, true);
+    private final Parque parque;
 
-    public Comedor() {
-        this.lugarDisponibles = new Semaphore(mesas * capacidadMesa, true);
-
-        // La barrera se dispara cuando llegan 4 personas a la mesa.
-        this.barreraMesa = new CyclicBarrier(capacidadMesa, () ->
-                System.out.println("[COMEDOR]: --- ¡Mesa completa! Comienzan a comer. ---")
-        );
+    public Comedor(Parque parque) {
+        this.parque = parque;
     }
 
-    // El visitante intenta sentarse, espera a que se complete la mesa o se cancele por timeout, y luego come.
-    public void almorzar(Visitante visitante) {
+    public void comer(Visitante visitante) {
         String nombre = visitante.getNombre();
-        boolean tieneAsiento = false;
+        boolean consiguioMesa = false;
 
         try {
-            // Intenta conseguir un asiento. Espera un poco por si se libera uno.
-            if (lugarDisponibles.tryAcquire(5, SECONDS)) {
-                tieneAsiento = true;
-                System.out.println("[COMEDOR]: " + nombre + " se sentó. Esperando grupo...");
+            // Chequea que el parque siga funcionando antes de hacer fila.
+            if (parque.estanActividadesAbiertas()) {
+                System.out.println("[COMEDOR]: " + nombre + " hace fila para buscar una mesa.");
 
-                try {
-                    
-                    // Espera a que se complete la mesa o se cancele por timeout.
-                    barreraMesa.await(5, SECONDS);
-                    
-                    // La barrera se abre.
-                    System.out.println("[COMEDOR]: " + nombre + " está comiendo...");
-                    Thread.sleep(2000);
-
-                } catch (TimeoutException e) {
-                    System.out.println("[COMEDOR]: " + nombre + " se cansó de esperar y se levanta.");
-                    // Al resetear, liberamos a los que quedaron colgados esperando.
-                    barreraMesa.reset();
-                } catch (BrokenBarrierException e) {
-                    System.out.println("[COMEDOR]: " + nombre + " se retira porque la mesa se canceló (alguien se fue).");
+                // Intenta agarrar mesa por un rato.
+                while (!consiguioMesa && parque.estanActividadesAbiertas()) {
+                    consiguioMesa = mesas.tryAcquire(2, TimeUnit.SECONDS);
                 }
-            } else {
-                // No hay asientos disponibles tras la espera.
-                System.out.println("[COMEDOR]: " + nombre + " no encontró sitio y se va.");
+
+                if (consiguioMesa) {
+                    System.out.println("[COMEDOR]: " + nombre + " se sento a comer.");
+                    Thread.sleep(3000); // Come tranquilo.
+                    System.out.println("[COMEDOR]: " + nombre + " termino su comida y libera la mesa.");
+                } else {
+                    System.out.println("[COMEDOR]: " + nombre + " se quedo sin comer porque cerraron.");
+                }
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } finally {
-            if (tieneAsiento) {
-                lugarDisponibles.release();
+            // Suelta la mesa solo si la usó.
+            if (consiguioMesa) {
+                mesas.release();
             }
         }
     }
