@@ -3,6 +3,8 @@ package ParqueAtraccion;
 import ParqueAtraccion.Atracciones.*;
 
 public class Parque implements Runnable {
+    // Volatile asegura que todos los hilos vean el cambio de estado al instante al hacer
+    // que la maquina virtual de java no guarde en la memoria cache sino de la memoria principal.
     private volatile boolean parqueAbierto = true;
     private volatile boolean ingresoAbierto = true;
     private volatile boolean actividadesAbiertas = true;
@@ -16,7 +18,9 @@ public class Parque implements Runnable {
     private final JuegoPremios juegoPremios;
     private final Comedor comedor;
 
-    public Parque() {// El parque se encarga de crear las atracciones y pasarles su referencia para que puedan consultar el estado del parque.
+    public Parque() {
+
+        // para que ellas puedan consultar la hora y el estado.
         this.trenTuristico = new TrenTuristico(this);
         this.autitosChocadores = new AutitosChocadores(this);
         this.barcoPirata = new BarcoPirata();
@@ -41,18 +45,24 @@ public class Parque implements Runnable {
     @Override
     public void run() {
         try {
+            System.out.println("=== EL PARQUE ABRE SUS PUERTAS (09:00) ===");
+            
             while (parqueAbierto) {
-                Thread.sleep(5000); // Cada 5 segundos avanza una hora en la simulación.
+                // Cada 5 segundos avanza una hora en la simulación.
+                Thread.sleep(5000);
                 horaSimulada++;
+                
+                // Imprimimos la hora para darle contexto a los logs de consola.
+                System.out.println("\n[RELOJ]: Son las " + horaSimulada + ":00 hs.");
                 
                 if (horaSimulada == 18) {
                     ingresoAbierto = false;
-                    System.out.println("--- El ingreso al parque se ha cerrado (18:00) ---");
+                    System.out.println("--- El ingreso al parque se ha cerrado (18:00). No entran más visitantes. ---");
                 }
                 
                 if (horaSimulada == 19) {
                     actividadesAbiertas = false;
-                    System.out.println("--- Las actividades han finalizado (19:00) ---");
+                    System.out.println("--- Las actividades han finalizado (19:00). Los visitantes deben ir a la salida. ---");
                 }
                 
                 if (horaSimulada == 23) {
@@ -60,7 +70,8 @@ public class Parque implements Runnable {
                     System.out.println("--- El parque cierra sus puertas definitivamente (23:00) ---");
                 }
             }
-        } catch (InterruptedException e) {
+        }catch (InterruptedException e) {
+            System.out.println("[RELOJ]: El reloj del parque fue interrumpido.");
             Thread.currentThread().interrupt();
         }
     }

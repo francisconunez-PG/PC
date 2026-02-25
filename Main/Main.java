@@ -11,6 +11,10 @@ public class Main {
         Thread hiloReloj = new Thread(parque);
         hiloReloj.start();
         
+        // Arrancamos el hilo del tren para que empiece a dar vueltas.
+        Thread hiloTren = new Thread(parque.getTrenTuristico());
+        hiloTren.start();
+        
         // Hilo encargado de los premios (usa Exchanger).
         Thread encargadoPremios = new Thread(() -> {
             parque.getJuegoPremios().atender();
@@ -24,12 +28,12 @@ public class Main {
             visitanThread.start();
             
             try {
+                // Llega un visitante nuevo cada 1.5 segundos
                 Thread.sleep(1500);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
         }
-        
         System.out.println("--- El sistema ha dejado de generar nuevos visitantes ---");
     }
 }
