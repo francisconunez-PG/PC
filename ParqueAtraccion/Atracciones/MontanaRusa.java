@@ -1,48 +1,45 @@
 package ParqueAtraccion.Atracciones;
-
 import ParqueAtraccion.Parque;
 import hilos.Visitante;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 
 public class MontanaRusa {
-
-    // Supongamos que el carrito tiene 8 lugares (podés cambiar el número)
-    private final Semaphore carrito = new Semaphore(8, true);
-    private final Parque parque;
+    private int pasajeros = 0;
+    private int enEspera = 0;
+    private boolean enViaje = false;
+    private final int CAPACIDAD = 5; // Capacidad de la montaña rusa
+    private final int limiteEspera = 10; // Límite de visitantes en espera para evitar filas eternas
 
     public MontanaRusa(Parque parque) {
-        this.parque = parque;
+        //TODO Auto-generated constructor stub
     }
 
-    public void subir(Visitante visitante) {
-        String nombre = visitante.getNombre();
-        boolean consiguioLugar = false;
+    public synchronized void subir(Visitante visitante) throws InterruptedException {
+        //Monitores para controlar el acceso a la montaña rusa. Si la fila de espera supera el límite, los visitantes siguientes se retiran.
+        if (enEspera < limiteEspera) {
+            enEspera++;
+            while (pasajeros >= CAPACIDAD || enViaje) {
+                wait();
+            }
+            enEspera--;
+            pasajeros++;
+            System.out.println("[MONTAÑA]: " + visitante.getNombre() + " subió (" + pasajeros + "/5).");
 
-        try {
-            // Solo hace fila si está abierto
-            if (parque.estanActividadesAbiertas()) {
-                System.out.println("[MONTAÑA RUSA]: " + nombre + " hace fila para subir al carrito.");
-
-                // Intenta subir. Si pasan 2 segundos, vuelve a mirar la hora.
-                while (!consiguioLugar && parque.estanActividadesAbiertas()) {
-                    consiguioLugar = carrito.tryAcquire(2, TimeUnit.SECONDS);
-                }
-
-                if (consiguioLugar) {
-                    System.out.println("[MONTAÑA RUSA]: " + nombre + " se subió a la Montaña Rusa. ¡Aaaaaah!");
-                    Thread.sleep(3000); // Duración del viaje
-                    System.out.println("[MONTAÑA RUSA]: " + nombre + " se bajó mareado pero feliz.");
-                } else {
-                    System.out.println("[MONTAÑA RUSA]: " + nombre + " se fue de la fila porque cerraron.");
+            if (pasajeros == CAPACIDAD) {
+                enViaje = true;
+                notifyAll();
+            } else {
+                while (!enViaje) {
+                    wait(); // Espera a que se llene la montaña rusa o a que comience el viaje
                 }
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        } finally {
-            if (consiguioLugar) {
-                carrito.release();
+            Thread.sleep(2000);
+            pasajeros--;
+            if (pasajeros == 0) {// Si se vacía la montaña rusa, se marca como disponible y se notifica a los visitantes en espera
+                enViaje = false;
+                notifyAll();
             }
+        } else {
+            System.out.println("[MONTAÑA]: " + visitante.getNombre() + " se retiró por fila llena.");
         }
     }
 }

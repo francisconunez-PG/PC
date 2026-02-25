@@ -1,73 +1,41 @@
 package ParqueAtraccion.Atracciones;
-
 import ParqueAtraccion.Parque;
 import hilos.Visitante;
 import java.util.concurrent.Semaphore;
 
 public class RealidadVirtual {
-
-    private static final int visoresDisponibles = 10;
-    private static final int manoplasDisponibles = 10;
-
-    private final Semaphore visores;
-    private final Semaphore manoplas;
-    
-    // Semáforo para que pasen de a uno a buscar el equipo y no se traben.
-    private final Semaphore guardia;
-    private final Parque parque;
+    //Semaphore para controlar el acceso a los equipos de realidad virtual.
+    private final Semaphore visores = new Semaphore(10, true);
+    private final Semaphore manoplas = new Semaphore(20, true);
+    private final Semaphore bases = new Semaphore(10, true);
+    private final Semaphore guardia = new Semaphore(1, true);
 
     public RealidadVirtual(Parque parque) {
-        this.parque = parque;
-        this.visores = new Semaphore(visoresDisponibles, true);
-        this.manoplas = new Semaphore(manoplasDisponibles, true);
-        this.guardia = new Semaphore(1, true);
+        //TODO Auto-generated constructor stub
     }
 
     public void jugar(Visitante visitante) {
-        String nombre = visitante.getNombre();
-        
-        boolean tieneVisor = false;
-        boolean tieneManopla = false;
-
+        boolean tieneEquipo = false;
         try {
-            System.out.println("[RV]: " + nombre + " hace fila para agarrar equipo.");
+            guardia.acquire();
+            if (visores.availablePermits() >= 1 && manoplas.availablePermits() >= 2 && bases.availablePermits() >= 1) {
+                visores.acquire(1);
+                manoplas.acquire(2);
+                bases.acquire(1);
+                tieneEquipo = true;
+            }
+            guardia.release();
 
-            guardia.tryAcquire();
-            try {
-                // Verifico que haya equipo completo antes de agarrar.
-                if (visores.availablePermits() > 0 && manoplas.availablePermits() > 0) {
-                    visores.tryAcquire();
-                    tieneVisor = true;
-                    
-                    manoplas.tryAcquire();
-                    tieneManopla = true;
-                    
-                    System.out.println("[RV]: " + nombre + " consiguio visor y manopla. Entrando al juego...");
-                } else {
-                    System.out.println("[RV]: " + nombre + " vio que faltan equipos y se fue.");
-                }
-            } finally {
-                // Libero al guardia rápido para que pase el siguiente.
-                guardia.release();
+            if (tieneEquipo) {
+                System.out.println("[RV]: " + visitante.getNombre() + " está jugando.");
+                Thread.sleep(3000);
+                visores.release(1);
+                manoplas.release(2);
+                bases.release(1);
+            } else {
+                System.out.println("[RV]: " + visitante.getNombre() + " no encontró equipo.");
             }
-
-            // A jugar, solo si consiguió las dos cosas.
-            if (tieneVisor && tieneManopla) {
-                System.out.println("[RV]: " + nombre + " esta jugando en la sala VR.");
-                Thread.sleep(3000); // Simula el tiempo de juego.
-                System.out.println("[RV]: " + nombre + " termino de jugar. Devolviendo equipo...");
-            }
-
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        } finally {
-            // Devuelvo las cosas para el que sigue.
-            if (tieneManopla) {
-                manoplas.release();
-            }
-            if (tieneVisor) {
-                visores.release();
-            }
-        }
+        } catch (InterruptedException e) {  System.out.println("[RV]: " + visitante.getNombre() + " fue interrumpido.");
+                                            Thread.currentThread().interrupt(); }
     }
 }

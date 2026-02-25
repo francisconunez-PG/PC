@@ -2,45 +2,49 @@ package ParqueAtraccion.Atracciones;
 
 import ParqueAtraccion.Parque;
 import hilos.Visitante;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 
 public class AutitosChocadores {
 
-    private final Semaphore autos = new Semaphore(20, true);
-    private final Parque parque;
+    // Usamos una barrera para que los 20 pasajeros salgan todos juntos al chocar.
+    private final CyclicBarrier inicioTurno = new CyclicBarrier(20, () -> {
+        System.out.println("[AUTITOS]: Los 10 autos están completos. ¡Arranca el juego!");
+    });
+    
+    // Semáforo para controlar que solo entren 20 personas a la pista.
+    private final Semaphore capacidadPista = new Semaphore(20, true);
 
-    // Ahora recibe el parque por constructor
     public AutitosChocadores(Parque parque) {
-        this.parque = parque;
+        //TODO Auto-generated constructor stub
     }
 
     public void jugar(Visitante visitante) {
-        String nombre = visitante.getNombre();
-        boolean consiguioAuto = false;
-
+        boolean pudoSubirse = false;
         try {
-            if (parque.estanActividadesAbiertas()) {
-                System.out.println("[AUTITOS]: " + nombre + " hace fila para los autitos.");
-
-                // Intenta subir. Si no puede en 2 segundos, mira el reloj.
-                while (!consiguioAuto && parque.estanActividadesAbiertas()) {
-                    consiguioAuto = autos.tryAcquire(2, TimeUnit.SECONDS);
-                }
-
-                if (consiguioAuto) {
-                    System.out.println("[AUTITOS]: " + nombre + " se subió a un auto y está chocando.");
-                    Thread.sleep(3000); // Tiempo de juego
-                    System.out.println("[AUTITOS]: " + nombre + " terminó de chocar y devolvió el auto.");
-                } else {
-                    System.out.println("[AUTITOS]: " + nombre + " se quedó sin jugar porque cerraron los autitos.");
-                }
+            // El visitante intenta conseguir uno de los 20 lugares.
+            pudoSubirse = capacidadPista.tryAcquire();
+            
+            if (pudoSubirse) {
+                System.out.println("[AUTITOS]: " + visitante.getNombre() + " se subió a un auto y espera al resto.");
+                
+                // Espera a que los otros 19 lugares se ocupen para que la barrera abra.
+                inicioTurno.await();
+                
+                // Simulación del tiempo que están chocando.
+                Thread.sleep(3000);
+                
+                System.out.println("[AUTITOS]: " + visitante.getNombre() + " bajó del auto y libera el lugar.");
+            } else {
+                System.out.println("[AUTITOS]: " + visitante.getNombre() + " no encontró autos libres y se fue a otro lado.");
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            
+        } catch (Exception e) { System.out.println("[AUTITOS]: " + visitante.getNombre() + " tuvo un problema y no pudo jugar.");
+                                Thread.currentThread().interrupt();
         } finally {
-            if (consiguioAuto) {
-                autos.release(); // Libera el auto sí o sí
+            // El permiso se libera solo si efectivamente lo había adquirido.
+            if (pudoSubirse) {
+                capacidadPista.release();
             }
         }
     }

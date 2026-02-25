@@ -1,85 +1,52 @@
 package ParqueAtraccion.Atracciones;
-
-import ParqueAtraccion.Parque;
 import hilos.Visitante;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.*;
 
 public class BarcoPirata {
-
-    private static final int capacidad = 20;
-    private static final long tiempoEspera = 4000;
-
-    private final Semaphore asientos = new Semaphore(capacidad, true);
-    private final Parque parque;
+    
+    private final Lock lock = new ReentrantLock(true);
+    private final Condition espera = lock.newCondition();
     private int pasajeros = 0;
-    private boolean viajeEnCurso = false;
-
-    public BarcoPirata(Parque parque) {
-        this.parque = parque;
-    }
+    private boolean enViaje = false;
 
     public void subir(Visitante visitante) {
-        String nombre = visitante.getNombre();
-
+    //Cerrojo para controlar el acceso al barco pirata. Los visitantes intentan subir al barco, pero si está lleno o en viaje, deben esperar a que se libere un lugar o a que el barco regrese.
+    //Si no pueden subir en 3 segundos, se van.
+        boolean pudoSubir = false;
+        lock.lock();
         try {
-            asientos.tryAcquire(); // Intentan conseguir asiento.
-
-            boolean soyElCapitan = false;
-
-            synchronized (this) {
+            if (pasajeros >= 20 || enViaje) {   // Si el barco está lleno o en viaje, el visitante espera a que se libere un lugar o a que el barco regrese.
+                espera.await(3, TimeUnit.SECONDS);  //Si no puede subir en 3 segundos, se va.
+            }
+            if (!enViaje && pasajeros < 20) {
                 pasajeros++;
-                System.out.println("[BP]: " + nombre + " sube (" + pasajeros + "/" + capacidad + ")");
-
-                long inicio = System.currentTimeMillis();
-                long restante = tiempoEspera;
-
-                // Esperan mientras no esté lleno, el barco no haya salido y el parque siga abierto.
-                while (pasajeros < capacidad && !viajeEnCurso && parque.estanActividadesAbiertas() && restante > 0) {
-                    wait(restante);
-                    restante = tiempoEspera - (System.currentTimeMillis() - inicio);
-                }
-
-                // Si no arrancó y todavía es horario, este hilo se hace cargo de iniciar el viaje.
-                if (!viajeEnCurso && parque.estanActividadesAbiertas()) {
-                    viajeEnCurso = true;
-                    soyElCapitan = true;
-                    notifyAll();
-                }
-                
-                // Los pasajeros normales esperan a que el capitan termine el viaje.
-                while (viajeEnCurso && !soyElCapitan) {
-                    wait();
-                }
+                pudoSubir = true;
+                if (pasajeros == 20) { enViaje = true; }
             }
-
-            if (soyElCapitan) {
-                System.out.println("[BP]: --- Barco Pirata INICIA viaje ---");
-                Thread.sleep(3000);
-                System.out.println("[BP]: --- Barco Pirata FINALIZA viaje ---");
-
-                synchronized (this) {
-                    viajeEnCurso = false;
-                    notifyAll(); // Despierta a todos para que se bajen.
-                }
-            }
-            
-            // Bajada y salida del barco.
-            synchronized (this) {
-                pasajeros--;
-                System.out.println("[BP]: " + nombre + " baja del barco.");
-                
-                // Suelta el permiso del semáforo recién cuando baja.
-                asientos.release();
-
-                if (pasajeros == 0) {
-                    System.out.println("[BP]: Barco vacío. Listos para la siguiente vuelta.");
-                }
-            }
-
         } catch (InterruptedException e) {
+            System.out.println("[BARCO]: " + visitante.getNombre() + " no pudo subir y se fue.");
             Thread.currentThread().interrupt();
+        } finally { lock.unlock(); }
+
+        if (pudoSubir) {
+            try { // Simula el viaje del barco pirata. Después de 3 segundos, los pasajeros bajan y el barco se marca como disponible.
+                Thread.sleep(3000);
+                lock.lock();
+                try {
+                    pasajeros--;
+                    if (pasajeros == 0) {
+                        enViaje = false;
+                        espera.signalAll(); // Si el barco se vacía, se marca como disponible y se notifica a los visitantes en espera
+                    }
+                } finally {
+                    lock.unlock();
+                }
+            } catch (InterruptedException e) {  System.out.println("[BARCO]: " + visitante.getNombre() + " se interrumpió durante el viaje.");
+                                                Thread.currentThread().interrupt(); }
         }
     }
 }
+
 
 

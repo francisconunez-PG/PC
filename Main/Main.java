@@ -5,49 +5,31 @@ import hilos.Visitante;
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println("=== ABRIENDO EL PARQUE ===");
-
         Parque parque = new Parque();
-        Thread hiloParque = new Thread(parque, "Reloj-Parque");
-        hiloParque.start();
+        
+        // Hilo que controla el tiempo del parque.
+        Thread hiloReloj = new Thread(parque);
+        hiloReloj.start();
+        
+        // Hilo encargado de los premios (usa Exchanger).
+        Thread encargadoPremios = new Thread(() -> {
+            parque.getJuegoPremios().atender();
+        });
+        encargadoPremios.setDaemon(true); // Se marca como daemon para que no impida el cierre del programa.
+        encargadoPremios.start();
 
-        // Arrancamos el tren como Daemon para que no bloquee el cierre a la noche.
-        Thread hiloTren = new Thread(parque.getTrenTuristico(), "Chofer-Tren");
-        hiloTren.setDaemon(true);
-        hiloTren.start();
-
-        // Arrancamos al encargado de los premios también como Daemon.
-        Thread hiloPremios = new Thread(() -> parque.getJuegoPremios().atender(), "Encargado-Premios");
-        hiloPremios.setDaemon(true);
-        hiloPremios.start();
-
-        // Hilo que genera visitantes constantemente hasta las 18:00.
-        Thread generadorVisitantes = new Thread(() -> {
-            int contador = 1;
+        // Se crean visitantes mientras el ingreso esté permitido y no se supere el cupo.
+        for (int i = 1; i <= 30 && parque.isIngresoAbierto(); i++) {
+            Thread visitanThread = new Thread(new Visitante("Visitante-" + i, parque));
+            visitanThread.start();
+            
             try {
-                while (parque.isIngresoAbierto()) {
-                    Visitante v = new Visitante("Visitante-" + contador, parque);
-                    new Thread(v).start();
-                    contador++;
-                    
-                    // Tiempo entre que llega un visitante y el otro.
-                    Thread.sleep(1500);
-                }
-                System.out.println("--- GENERADOR: Ya son las 18:00, no entra más nadie. ---");
+                Thread.sleep(1500);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-        });
-        generadorVisitantes.start();
-
-        try {
-            // El Main se queda esperando a que el reloj marque las 23:00 y el hilo del parque termine.
-            hiloParque.join();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
         }
-
-        System.out.println("=== SIMULACIÓN FINALIZADA. PARQUE CERRADO ===");
-        System.out.println("Número de hilos activos: " + Thread.activeCount());
+        
+        System.out.println("--- El sistema ha dejado de generar nuevos visitantes ---");
     }
 }

@@ -3,15 +3,11 @@ package ParqueAtraccion;
 import ParqueAtraccion.Atracciones.*;
 
 public class Parque implements Runnable {
-
-    // volatile para que todos los hilos vean el cambio de hora al instante
     private volatile boolean parqueAbierto = true;
     private volatile boolean ingresoAbierto = true;
     private volatile boolean actividadesAbiertas = true;
-    
     private int horaSimulada = 9;
 
-    // Declaramos las atracciones
     private final TrenTuristico trenTuristico;
     private final AutitosChocadores autitosChocadores;
     private final BarcoPirata barcoPirata;
@@ -20,18 +16,16 @@ public class Parque implements Runnable {
     private final JuegoPremios juegoPremios;
     private final Comedor comedor;
 
-    public Parque() {
-        // Le pasamos "this" a todas para que sepan en qué parque están
+    public Parque() {// El parque se encarga de crear las atracciones y pasarles su referencia para que puedan consultar el estado del parque.
         this.trenTuristico = new TrenTuristico(this);
         this.autitosChocadores = new AutitosChocadores(this);
-        this.barcoPirata = new BarcoPirata(this);
+        this.barcoPirata = new BarcoPirata();
         this.montanaRusa = new MontanaRusa(this);
         this.realidadVirtual = new RealidadVirtual(this);
         this.juegoPremios = new JuegoPremios(this);
         this.comedor = new Comedor(this);
     }
 
-    // Getters
     public boolean isParqueAbierto() { return parqueAbierto; }
     public boolean isIngresoAbierto() { return ingresoAbierto; }
     public boolean estanActividadesAbiertas() { return actividadesAbiertas; }
@@ -48,20 +42,22 @@ public class Parque implements Runnable {
     public void run() {
         try {
             while (parqueAbierto) {
-                Thread.sleep(5000); // 5 segundos reales = 1 hora simulada.
+                Thread.sleep(5000); // Cada 5 segundos avanza una hora en la simulación.
                 horaSimulada++;
-
+                
                 if (horaSimulada == 18) {
                     ingresoAbierto = false;
-                    System.out.println("¡ATENCIÓN! El ingreso al parque ha CERRADO (18:00 hrs).");
+                    System.out.println("--- El ingreso al parque se ha cerrado (18:00) ---");
                 }
+                
                 if (horaSimulada == 19) {
                     actividadesAbiertas = false;
-                    System.out.println("¡ATENCIÓN! Todas las actividades han CERRADO (19:00 hrs).");
+                    System.out.println("--- Las actividades han finalizado (19:00) ---");
                 }
-                if (horaSimulada >= 23) {
+                
+                if (horaSimulada == 23) {
                     parqueAbierto = false;
-                    System.out.println("¡FIN DE JORNADA! El parque CIERRA completamente (23:00 hrs).");
+                    System.out.println("--- El parque cierra sus puertas definitivamente (23:00) ---");
                 }
             }
         } catch (InterruptedException e) {
