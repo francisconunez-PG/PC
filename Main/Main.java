@@ -1,19 +1,32 @@
 package Main;
 
 import ParqueAtraccion.Parque;
+import hilos.Reloj;
 import hilos.Visitante;
 
 public class Main {
     public static void main(String[] args) {
         Parque parque = new Parque();
         
-        // Hilo que controla el tiempo del parque.
-        Thread hiloReloj = new Thread(parque);
-        hiloReloj.start();
+        // Hilo reloj que controla el tiempo del parque.
+        Thread Reloj = new Thread(new Reloj(parque));
+        Reloj.start();
         
-        // Arrancamos el hilo del tren para que empiece a dar vueltas.
+        // Arrancamos los hilos de las atracciones para que manejen sus propios ciclos y simulación de tiempo.
         Thread hiloTren = new Thread(parque.getTrenTuristico());
         hiloTren.start();
+        
+        Thread hiloMontana = new Thread(parque.getMontanaRusa());
+        hiloMontana.start();
+        
+        Thread hiloBarco = new Thread(parque.getBarcoPirata());
+        hiloBarco.start();
+        
+        Thread hiloAutitos = new Thread(parque.getAutitosChocadores());
+        hiloAutitos.start();
+        
+        Thread hiloRV = new Thread(parque.getRealidadVirtual());
+        hiloRV.start();
         
         // Hilo encargado de los premios (usa Exchanger).
         Thread encargadoPremios = new Thread(() -> {

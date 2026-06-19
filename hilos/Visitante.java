@@ -48,7 +48,7 @@ public class Visitante implements Runnable {
                 
                 // Si el parque sigue abierto, el visitante camina y descansa un poco antes de la siguiente atracción.
                 if (parque.estanActividadesAbiertas()) {
-                    Thread.sleep(750 + random.nextInt(500));
+                    Thread.sleep(150 + random.nextInt(400));
                 }
             }
             
