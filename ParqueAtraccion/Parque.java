@@ -19,7 +19,7 @@ public class Parque {
     private final Comedor comedor;
 
     public Parque() {
-        // Pasamos el parque para que ellas puedan consultar la hora y el estado.
+        // Paso el parque para que las clases tengan autonomia.
         this.trenTuristico = new TrenTuristico(this);
         this.autitosChocadores = new AutitosChocadores(this);
         this.barcoPirata = new BarcoPirata(this);

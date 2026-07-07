@@ -12,7 +12,7 @@ public class Main {
         Thread Reloj = new Thread(new Reloj(parque));
         Reloj.start();
         
-        // Arrancamos los hilos de las atracciones para que manejen sus propios ciclos y simulación de tiempo.
+        // Arranco los hilos.
         Thread hiloTren = new Thread(parque.getTrenTuristico());
         hiloTren.start();
         

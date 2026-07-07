@@ -9,11 +9,9 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 public class TrenTuristico implements Runnable {
-    // La cola bloqueante maneja la fila de espera automáticamente con sus tiempos.
-    private final BlockingQueue<Visitante> estacion = new ArrayBlockingQueue<>(10);
-    
-    // Lista para saber quiénes están efectivamente arriba del tren dando la vuelta.
-    private final List<Visitante> pasajerosAbordo = new ArrayList<>();
+    //
+    private final BlockingQueue<Visitante> estacion = new ArrayBlockingQueue<>(10); // Capacidad de la estación para esperar visitantes.
+    private final List<Visitante> pasajerosAbordo = new ArrayList<>(); // Lista de pasajeros actualmente en el tren.
     private final Parque parque;
 
     public TrenTuristico(Parque parque) {
@@ -23,33 +21,24 @@ public class TrenTuristico implements Runnable {
     public void subir(Visitante visitante) {
         boolean pudoSubir = false;
         try {
-            // El visitante intenta entrar a la estación. Espera como máximo 4 segundos si está llena.
+            // El visitante entra a la estación.
             pudoSubir = estacion.offer(visitante, 4, TimeUnit.SECONDS);
             
             if (pudoSubir) {
                 System.out.println("[TREN]: " + visitante.getNombre() + " entró a la estación y espera el tren.");
                 
-                // Usamos un monitor clásico para que el visitante espere a que termine su viaje.
+                // Monitor para esperar a que termine su recorrido.
                 synchronized (this) {
-                    // Mientras el visitante siga en la estación o arriba del tren, se queda esperando pacientemente.
                     while ((estacion.contains(visitante) || pasajerosAbordo.contains(visitante)) && parque.estanActividadesAbiertas()) {
-                        // Le ponemos un timeout al wait por si se cierra el parque de golpe.
-                        wait(2000);
+                        wait(2000); // Espera a que el tren vuelva a la estación para bajarse.
                     }
                 }
-                
-                // Si sale del while, es porque ya no está en la estación ni en el tren.
-                if (parque.estanActividadesAbiertas()) {
-                    System.out.println("[TREN]: " + visitante.getNombre() + " se bajó del tren al terminar el recorrido.");
-                } else {
-                    System.out.println("[TREN]: " + visitante.getNombre() + " tuvo que evacuar la estación porque cerró el parque.");
-                }
-                
+                System.out.println("[TREN]: " + visitante.getNombre() + " se bajó del tren en la estación de destino.");
             } else {
-                System.out.println("[TREN]: " + visitante.getNombre() + " vio la estación llena y se fue a otra atracción.");
+                System.out.println("[TREN]: " + visitante.getNombre() + " vio la estación llena y prefirió no esperar.");
             }
         } catch (InterruptedException e) {
-            System.out.println("[TREN]: " + visitante.getNombre() + " fue interrumpido mientras esperaba en la estación.");
+            System.out.println("[TREN]: A " + visitante.getNombre() + " le interrumpieron la espera en la estación.");
             Thread.currentThread().interrupt();
         }
     }
@@ -57,37 +46,30 @@ public class TrenTuristico implements Runnable {
     @Override
     public void run() {
         try {
-            // El tren funciona de fondo dando vueltas mientras el parque siga abierto.
             while (parque.estanActividadesAbiertas()) {
-                // Simula el tiempo que el tren espera en la estación a que suba la gente.
-                Thread.sleep(2000);
+                Thread.sleep(1000); // Frenado en estación.
                 
                 synchronized (this) {
-                    // El tren abre las puertas y todos los de la fila suben a bordo.
-                    // drainTo saca a todos de 'estacion' y los mete en 'pasajerosAbordo' de un solo movimiento.
+                    // Pasa todos los que estaban en la cola de bloqueo(de espera) directamente al tren (lista).
                     estacion.drainTo(pasajerosAbordo);
                 }
                 
                 if (!pasajerosAbordo.isEmpty()) {
                     System.out.println("[TREN]: ¡Chu chu! El tren arranca con " + pasajerosAbordo.size() + " pasajeros a bordo.");
                     
-                    // Simulamos el tiempo del viaje real. Lo hacemos afuera del synchronized para no bloquear a los que llegan a la estación.
-                    Thread.sleep(3000);
+                    Thread.sleep(3000); // Simulando el viaje.
                     
                     synchronized (this) {
-                        // El viaje terminó. Vaciamos el tren para que los visitantes puedan salir de su bucle while.
                         pasajerosAbordo.clear();
                         System.out.println("[TREN]: El tren volvió a la estación y abre las puertas.");
-                        
-                        // Le avisamos a los visitantes que estaban durmiendo que revisen su estado.
-                        notifyAll();
+                        notifyAll(); // Despierta a los pasajeros para bajarse.
                     }
                 } else {
-                    System.out.println("[TREN]: El tren llegó a la estación pero no había pasajeros esperando. Esperando un poco más...");
+                    System.out.println("[TREN]: Esperando pasajeros en la estación...");
                 }
             }
         } catch (InterruptedException e) {
-            System.out.println("[TREN]: El chofer del tren recibe el aviso de cierre y guarda la locomotora.");
+            System.out.println("[TREN]: El chofer guarda la locomotora.");
             Thread.currentThread().interrupt();
         }
     }
