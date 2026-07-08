@@ -1,6 +1,7 @@
-package Main;
+package main;
 
 import ParqueAtraccion.Parque;
+import ParqueAtraccion.Atracciones.*;
 import hilos.Reloj;
 import hilos.Visitante;
 
@@ -8,45 +9,45 @@ public class Main {
     public static void main(String[] args) {
         Parque parque = new Parque();
         
-        // Hilo reloj que controla el tiempo del parque.
-        Thread Reloj = new Thread(new Reloj(parque));
-        Reloj.start();
-        
-        // Arranco los hilos.
-        Thread hiloTren = new Thread(parque.getTrenTuristico());
-        hiloTren.start();
-        
-        Thread hiloMontana = new Thread(parque.getMontanaRusa());
-        hiloMontana.start();
-        
-        Thread hiloBarco = new Thread(parque.getBarcoPirata());
-        hiloBarco.start();
-        
-        Thread hiloAutitos = new Thread(parque.getAutitosChocadores());
-        hiloAutitos.start();
-        
-        Thread hiloRV = new Thread(parque.getRealidadVirtual());
-        hiloRV.start();
-        
-        // Hilo encargado de los premios (usa Exchanger).
-        Thread encargadoPremios = new Thread(() -> {
-            parque.getJuegoPremios().atender();
-        });
-        encargadoPremios.setDaemon(true); // Se marca como daemon para que no impida el cierre del programa.
-        encargadoPremios.start();
+        iniciarAdministracion(parque);
+        iniciarAtracciones(parque);
+        recibirVisitantes(parque);
+    }
 
-        // Se crean visitantes mientras el ingreso esté permitido y no se supere el cupo.
-        for (int i = 1; i <= 30 && parque.isIngresoAbierto(); i++) {
-            Thread visitanThread = new Thread(new Visitante("Visitante-" + i, parque));
-            visitanThread.start();
-            
+    // Inicia los hilos de control general.
+    private static void iniciarAdministracion(Parque parque) {
+        Thread reloj = new Thread(new Reloj(parque));
+        reloj.start();
+
+        JuegoPremios premios = new JuegoPremios();
+        Thread encargadoPremios = new Thread(premios);
+        encargadoPremios.setDaemon(true);
+        encargadoPremios.start();
+    }
+
+    // Lanza los controladores de las máquinas.
+    private static void iniciarAtracciones(Parque parque) {
+        new Thread(new TrenTuristico(parque)).start();
+        new Thread(new AutitosChocadores(parque)).start();
+        new Thread(new BarcoPirata(parque)).start();
+        new Thread(new MontanaRusa(parque)).start();
+        new Thread(new RealidadVirtual(parque)).start();
+        new Thread(new Comedor(parque)).start();
+    }
+
+    // Simula la llegada escalonada de personas.
+    private static void recibirVisitantes(Parque parque) {
+        for (int i = 1; i <= 30; i++) {
+            if (!parque.isIngresoAbierto()) break;
+
+            Visitante visitante = new Visitante("Visitante-" + i, parque);
+            new Thread(visitante).start();
+
             try {
-                // Llega un visitante nuevo cada 1.5 segundos
                 Thread.sleep(1500);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
         }
-        System.out.println("--- El sistema ha dejado de generar nuevos visitantes ---");
     }
 }

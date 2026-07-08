@@ -13,51 +13,43 @@ public class Visitante implements Runnable {
         this.parque = parque;
     }
 
-    public String getNombre() { return nombre; }
+    public String getNombre() {
+        return nombre;
+    }
 
     @Override
     public void run() {
         try {
-            // Mientras las actividades estén abiertas, el visitante elige juegos.
             while (parque.estanActividadesAbiertas()) {
-                int eleccion = random.nextInt(7);
-
-                switch (eleccion) {
-                    case 0:
-                        parque.getTrenTuristico().subir(this);
-                        break;
-                    case 1:
-                        parque.getAutitosChocadores().jugar(this);
-                        break;
-                    case 2:
-                        parque.getBarcoPirata().subir(this);
-                        break;
-                    case 3:
-                        parque.getMontanaRusa().subir(this);
-                        break;
-                    case 4:
-                        parque.getRealidadVirtual().jugar(this);
-                        break;
-                    case 5:
-                        parque.getJuegoPremios().jugar(this);
-                        break;
-                    case 6:
-                        parque.getComedor().comer(this);
-                        break;
-                }
-                
-                // Si el parque sigue abierto, el visitante camina y descansa un poco antes de la siguiente atracción.
-                if (parque.estanActividadesAbiertas()) {
-                    Thread.sleep(150 + random.nextInt(400));
-                }
+                elegirYParticipar();
+                descansarEntreJuegos();
             }
-            
-            System.out.println("[VISITANTE]: " + nombre + " se retira porque terminaron las actividades (19:00).");
-            
+            System.out.println("[VISITANTE]: " + nombre + " se retira por cierre de actividades.");
         } catch (InterruptedException e) {
-            // Si el visitante estaba esperando en una atracción y el parque cierra/interrumpe los hilos, cae directo acá.
-            System.out.println("[VISITANTE]: " + nombre + " fue interrumpido/evacuado y se retira del parque.");
+            System.out.println("[VISITANTE]: " + nombre + " fue evacuado del parque.");
             Thread.currentThread().interrupt();
+        }
+    }
+
+    // Selecciona una atracción al azar.
+    private void elegirYParticipar() {
+        int eleccion = random.nextInt(7);
+        
+        switch (eleccion) {
+            case 0 -> parque.getMontanaRusa().subir(this);
+            case 1 -> parque.getBarcoPirata().subir(this);
+            case 2 -> parque.getAutitosChocadores().subir(this);
+            case 3 -> parque.getTrenTuristico().viajar(this);
+            case 4 -> parque.getRealidadVirtual().jugar(this);
+            case 5 -> parque.getComedor().comer(this);
+            case 6 -> parque.getJuegoPremios().intercambiar(this);
+        }
+    }
+
+    // Simula el tiempo de caminata entre juegos.
+    private void descansarEntreJuegos() throws InterruptedException {
+        if (parque.estanActividadesAbiertas()) {
+            Thread.sleep(150 + random.nextInt(400));
         }
     }
 }

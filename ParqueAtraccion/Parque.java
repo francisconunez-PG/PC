@@ -3,47 +3,34 @@ package ParqueAtraccion;
 import ParqueAtraccion.Atracciones.*;
 
 public class Parque {
-    // Volatile asegura que todos los hilos vean el cambio de estado al instante al hacer
-    // lo que permite que la maquina virtual de java no guarde en la memoria cache sino de la memoria principal.
     private volatile boolean parqueAbierto = true;
     private volatile boolean ingresoAbierto = true;
     private volatile boolean actividadesAbiertas = true;
-    private int horaSimulada = 9;
 
-    private final TrenTuristico trenTuristico;
-    private final AutitosChocadores autitosChocadores;
-    private final BarcoPirata barcoPirata;
-    private final MontanaRusa montanaRusa;
-    private final RealidadVirtual realidadVirtual;
-    private final JuegoPremios juegoPremios;
-    private final Comedor comedor;
+    private final MontanaRusa montanaRusa = new MontanaRusa(this);
+    private final BarcoPirata barcoPirata = new BarcoPirata(this);
+    private final AutitosChocadores autitosChocadores = new AutitosChocadores(this);
+    private final TrenTuristico trenTuristico = new TrenTuristico(this);
+    private final RealidadVirtual realidadVirtual = new RealidadVirtual(this);
+    private final Comedor comedor = new Comedor(this);
+    private final JuegoPremios juegoPremios = new JuegoPremios();
 
-    public Parque() {
-        // Paso el parque para que las clases tengan autonomia.
-        this.trenTuristico = new TrenTuristico(this);
-        this.autitosChocadores = new AutitosChocadores(this);
-        this.barcoPirata = new BarcoPirata(this);
-        this.montanaRusa = new MontanaRusa(this);
-        this.realidadVirtual = new RealidadVirtual(this);
-        this.juegoPremios = new JuegoPremios(this);
-        this.comedor = new Comedor(this);
-    }
-
+    // Métodos de estado del parque.
     public boolean isParqueAbierto() { return parqueAbierto; }
     public boolean isIngresoAbierto() { return ingresoAbierto; }
     public boolean estanActividadesAbiertas() { return actividadesAbiertas; }
-    public int getHoraSimulada() { return horaSimulada; }
 
-    public void avanzarHora() { this.horaSimulada++; }
+    // Cambios de estado.
     public void cerrarIngreso() { this.ingresoAbierto = false; }
     public void cerrarActividades() { this.actividadesAbiertas = false; }
-    public void cerrarParqueDefinitivamente() { this.parqueAbierto = false; }
+    public void cerrarParque() { this.parqueAbierto = false; }
 
-    public TrenTuristico getTrenTuristico() { return trenTuristico; }
-    public AutitosChocadores getAutitosChocadores() { return autitosChocadores; }
-    public BarcoPirata getBarcoPirata() { return barcoPirata; }
+    // Getters de atracciones.
     public MontanaRusa getMontanaRusa() { return montanaRusa; }
+    public BarcoPirata getBarcoPirata() { return barcoPirata; }
+    public AutitosChocadores getAutitosChocadores() { return autitosChocadores; }
+    public TrenTuristico getTrenTuristico() { return trenTuristico; }
     public RealidadVirtual getRealidadVirtual() { return realidadVirtual; }
-    public JuegoPremios getJuegoPremios() { return juegoPremios; }
     public Comedor getComedor() { return comedor; }
+    public JuegoPremios getJuegoPremios() { return juegoPremios; }
 }
