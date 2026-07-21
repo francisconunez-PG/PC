@@ -1,7 +1,7 @@
 package Main;
 
-import ParqueAtraccion.Parque;
 import ParqueAtraccion.Atracciones.*;
+import ParqueAtraccion.Parque;
 import hilos.Reloj;
 import hilos.Visitante;
 
@@ -35,14 +35,14 @@ public class Main {
         new Thread(parque.getComedor()).start();
     }
 
-    // Simula la llegada escalonada de personas sin usar break.
+    // Simula la llegada escalonada de personas.
     private static void recibirVisitantes(Parque parque) {
-        for (int i = 1; i <= 30 && parque.isIngresoAbierto(); i++) {
+        for (int i = 1; i <= 150 && parque.isIngresoAbierto(); i++) {
             Visitante visitante = new Visitante("Visitante-" + i, parque);
             new Thread(visitante).start();
 
             try {
-                Thread.sleep(1500);
+                Thread.sleep(200);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
