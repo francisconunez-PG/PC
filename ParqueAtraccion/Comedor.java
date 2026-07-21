@@ -1,6 +1,5 @@
-package ParqueAtraccion.Atracciones;
+package ParqueAtraccion;
 
-import ParqueAtraccion.Parque;
 import hilos.Visitante;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
@@ -18,22 +17,25 @@ public class Comedor implements Runnable {
 
     // Ciclo para ingresar a comer.
     public void comer(Visitante visitante) {
-        if (!sentarse(visitante)) return;
-        consumirAlimento();
-        levantarse();
+        if (sentarse(visitante)) {
+            consumirAlimento();
+            levantarse();
+        }
     }
 
     // Intenta conseguir un permiso de mesa.
     private boolean sentarse(Visitante visitante) {
+        boolean exito = false;
         try {
-            if (!parque.estanActividadesAbiertas()) return false;
-            mesas.acquire();
-            System.out.println("[COMEDOR]: " + visitante.getNombre() + " se sentó a comer.");
-            return true;
+            if (parque.estanActividadesAbiertas()) {
+                mesas.acquire();
+                System.out.println("[COMEDOR]: " + visitante.getNombre() + " se sentó a comer.");
+                exito = true;
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return false;
         }
+        return exito;
     }
 
     // Simula el tiempo comiendo.

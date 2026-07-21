@@ -2,75 +2,97 @@ package ParqueAtraccion.Atracciones;
 
 import ParqueAtraccion.Parque;
 import hilos.Visitante;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeUnit;
 
 public class TrenTuristico implements Runnable {
-    //
-    private final BlockingQueue<Visitante> estacion = new ArrayBlockingQueue<>(10); // Capacidad de la estación para esperar visitantes.
-    private final List<Visitante> pasajerosAbordo = new ArrayList<>(); // Lista de pasajeros actualmente en el tren.
     private final Parque parque;
+    private final int capacidadTren = 15;
+    private final ArrayBlockingQueue<Visitante> estacion = new ArrayBlockingQueue<>(capacidadTren);
+    private int pasajerosAbordo = 0;
 
     public TrenTuristico(Parque parque) {
         this.parque = parque;
     }
 
-    public void subir(Visitante visitante) {
-        boolean pudoSubir = false;
+    // Ciclo del visitante esperando el tren.
+    public void viajar(Visitante visitante) {
+        if (hacerFilaEnEstacion(visitante)) {
+            esperarRecorrido();
+        }
+    }
+
+    // Ingresa a la cola y espera ser llamado.
+    private boolean hacerFilaEnEstacion(Visitante visitante) {
+        boolean exito = false;
         try {
-            // El visitante entra a la estación.
-            pudoSubir = estacion.offer(visitante, 4, TimeUnit.SECONDS);
-            
-            if (pudoSubir) {
-                System.out.println("[TREN]: " + visitante.getNombre() + " entró a la estación y espera el tren.");
-                
-                // Monitor para esperar a que termine su recorrido.
-                synchronized (this) {
-                    while ((estacion.contains(visitante) || pasajerosAbordo.contains(visitante)) && parque.estanActividadesAbiertas()) {
-                        wait(2000); // Espera a que el tren vuelva a la estación para bajarse.
-                    }
+            estacion.put(visitante);
+            synchronized (this) {
+                while (estacion.contains(visitante) && parque.estanActividadesAbiertas()) {
+                    this.wait(1000);
                 }
-                System.out.println("[TREN]: " + visitante.getNombre() + " se bajó del tren en la estación de destino.");
-            } else {
-                System.out.println("[TREN]: " + visitante.getNombre() + " vio la estación llena y prefirió no esperar.");
+            }
+            exito = parque.estanActividadesAbiertas();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return exito;
+    }
+
+    // Se mantiene a bordo hasta que el tren finalice.
+    private synchronized void esperarRecorrido() {
+        try {
+            while (pasajerosAbordo > 0 && parque.estanActividadesAbiertas()) {
+                this.wait(1000);
             }
         } catch (InterruptedException e) {
-            System.out.println("[TREN]: A " + visitante.getNombre() + " le interrumpieron la espera en la estación.");
             Thread.currentThread().interrupt();
         }
     }
 
+    // Ciclo del tren.
     @Override
     public void run() {
+        while (parque.estanActividadesAbiertas()) {
+            if (subirPasajeros()) {
+                hacerRecorrido();
+                bajarPasajeros();
+            }
+        }
+    }
+
+    // Transfiere de la cola al tren.
+    private synchronized boolean subirPasajeros() {
+        boolean listo = false;
         try {
-            while (parque.estanActividadesAbiertas()) {
-                Thread.sleep(1000); // Frenado en estación.
-                
-                synchronized (this) {
-                    // Pasa todos los que estaban en la cola de bloqueo(de espera) directamente al tren (lista).
-                    estacion.drainTo(pasajerosAbordo);
-                }
-                
-                if (!pasajerosAbordo.isEmpty()) {
-                    System.out.println("[TREN]: ¡Chu chu! El tren arranca con " + pasajerosAbordo.size() + " pasajeros a bordo.");
-                    
-                    Thread.sleep(3000); // Simulando el viaje.
-                    
-                    synchronized (this) {
-                        pasajerosAbordo.clear();
-                        System.out.println("[TREN]: El tren volvió a la estación y abre las puertas.");
-                        notifyAll(); // Despierta a los pasajeros para bajarse.
-                    }
-                } else {
-                    System.out.println("[TREN]: Esperando pasajeros en la estación...");
-                }
+            while (estacion.size() < capacidadTren && parque.estanActividadesAbiertas()) {
+                this.wait(1000);
+            }
+            if (parque.estanActividadesAbiertas()) {
+                estacion.clear();
+                pasajerosAbordo = capacidadTren;
+                System.out.println("[TREN]: Partiendo con " + capacidadTren + " pasajeros.");
+                this.notifyAll();
+                listo = true;
             }
         } catch (InterruptedException e) {
-            System.out.println("[TREN]: El chofer guarda la locomotora.");
             Thread.currentThread().interrupt();
         }
+        return listo;
+    }
+
+    // Simula el paseo por el parque.
+    private void hacerRecorrido() {
+        try {
+            Thread.sleep(4000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    // Vacía el tren y avisa a los que esperan bajar.
+    private synchronized void bajarPasajeros() {
+        System.out.println("[TREN]: Llegó a la estación. Todos descienden.");
+        pasajerosAbordo = 0;
+        this.notifyAll();
     }
 }

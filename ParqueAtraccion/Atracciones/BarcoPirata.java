@@ -6,11 +6,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.*;
 
 public class BarcoPirata implements Runnable {
-    // Lock y Condiciones
-    private final Lock lock = new ReentrantLock(true); // Respeta el orden de llegada para subir al barco.
-    private final Condition esperaFila = lock.newCondition(); // Fila hasta que puedan subir al barco.
-    private final Condition esperaViaje = lock.newCondition(); // Visitantes esperando a que termine el viaje.
-    private final Condition esperaMaquina = lock.newCondition(); // Para coordinar con el hilo de la máquina.
+    private final Lock lock = new ReentrantLock(true);
+    private final Condition esperaFila = lock.newCondition();
+    private final Condition esperaViaje = lock.newCondition();
+    private final Condition esperaMaquina = lock.newCondition();
     
     private int pasajerosAbordo = 0;
     private int pasajerosQueBajaron = 0;
@@ -22,16 +21,35 @@ public class BarcoPirata implements Runnable {
         this.parque = parque;
     }
 
+    // Ciclo de vida del visitante en el juego.
     public void subir(Visitante visitante) {
         boolean pudoSubir = false;
         boolean completoViaje = false;
         
         lock.lock();
         try {
-            long tiempoRestante = TimeUnit.SECONDS.toNanos(3);
-            boolean seCanso = false;
-            
-            // Espera en la fila
+            if (intentarHacerFila(visitante)) {
+                pudoSubir = abordarBarco(visitante);
+                if (pudoSubir) {
+                    completoViaje = aguardarFinDeViaje();
+                }
+            }
+        } finally {
+            lock.unlock();
+        }
+
+        if (pudoSubir && completoViaje) {
+            descenderDelBarco(visitante);
+        }
+    }
+
+    // Lógica de espera en la fila con timeout.
+    private boolean intentarHacerFila(Visitante visitante) {
+        boolean exito = false;
+        long tiempoRestante = TimeUnit.SECONDS.toNanos(3);
+        boolean seCanso = false;
+        
+        try {
             while ((pasajerosAbordo >= capacidad || enViaje) && !seCanso && parque.estanActividadesAbiertas()) {
                 if (tiempoRestante <= 0) {
                     seCanso = true;
@@ -39,106 +57,118 @@ public class BarcoPirata implements Runnable {
                     tiempoRestante = esperaFila.awaitNanos(tiempoRestante);
                 }
             }
-            
-            
-            if (seCanso) {
-                System.out.println("[BARCO]: " + visitante.getNombre() + " se cansó de esperar en la fila y se fue.");
-            } else if (!parque.estanActividadesAbiertas()) {
-                esperaFila.signalAll(); // Despierta a los demás de la fila para que puedan irse al terminar el día.
-                } else {
-                    // El visitante sube con éxito al barco.
-                    pasajerosAbordo++;
-                    System.out.println("[BARCO]: " + visitante.getNombre() + " se subió al barco pirata (" + pasajerosAbordo + "/" + capacidad + ")");
-                    pudoSubir = true;
 
-                    if (pasajerosAbordo == capacidad) {
-                        esperaMaquina.signal(); // Despierta a la máquina si se llenó.
-                    }
-
-                    // El pasajero duerme esperando que termine el viaje.
-                    while ((enViaje || pasajerosAbordo < capacidad) && parque.estanActividadesAbiertas()) {
-                        esperaViaje.await();
-                    }
-                
-                    // Si al salir del bucle de espera el parque sigue abierto, el viaje terminó con éxito
-                    if (parque.estanActividadesAbiertas()) {
-                        completoViaje = true;
-                    }
-                }
-
+            if (seCanso || !parque.estanActividadesAbiertas()) {
+                if (!parque.estanActividadesAbiertas()) esperaFila.signalAll();
+            } else {
+                exito = true;
+            }
         } catch (InterruptedException e) {
-            System.out.println("[BARCO]: " + visitante.getNombre() + " se fue de la fila por una interrupción.");
+            Thread.currentThread().interrupt();
+        }
+        
+        return exito;
+    }
+
+    // Proceso de abordaje y aviso a la máquina.
+    private boolean abordarBarco(Visitante visitante) {
+        pasajerosAbordo++;
+        System.out.println("[BARCO]: " + visitante.getNombre() + " subió (" + pasajerosAbordo + "/" + capacidad + ")");
+        if (pasajerosAbordo == capacidad) {
+            esperaMaquina.signal();
+        }
+        return true;
+    }
+
+    // Bloqueo hasta que la máquina termine el recorrido.
+    private boolean aguardarFinDeViaje() {
+        boolean completado = false;
+        try {
+            while ((enViaje || pasajerosAbordo < capacidad) && parque.estanActividadesAbiertas()) {
+                esperaViaje.await();
+            }
+            completado = parque.estanActividadesAbiertas();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return completado;
+    }
+
+    // Proceso de salida y reinicio del ciclo.
+    private void descenderDelBarco(Visitante visitante) {
+        lock.lock();
+        try {
+            pasajerosQueBajaron++;
+            if (pasajerosQueBajaron == capacidad) {
+                pasajerosAbordo = 0;
+                pasajerosQueBajaron = 0;
+                enViaje = false;
+                esperaMaquina.signal();
+                esperaFila.signalAll();
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    // Ciclo de vida de la máquina del barco.
+    @Override
+    public void run() {
+        while (parque.estanActividadesAbiertas()) {
+            if (esperarLlenado()) {
+                simularMovimiento();
+                detenerBarco();
+            }
+        }
+        liberarVisitantesAtrapados();
+    }
+
+    // Espera a que se llene la capacidad.
+    private boolean esperarLlenado() {
+        boolean listo = false;
+        lock.lock();
+        try {
+            while (pasajerosAbordo < capacidad && parque.estanActividadesAbiertas()) {
+                esperaMaquina.await(1, TimeUnit.SECONDS);
+            }
+            if (parque.estanActividadesAbiertas()) {
+                enViaje = true;
+                listo = true;
+            }
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } finally {
             lock.unlock();
         }
+        return listo;
+    }
 
-        // Proceso de bajada.
-        // Solo se ejecuta si efectivamente subió y logró completar el recorrido sin evacuaciones por cierre.
-        if (pudoSubir && completoViaje) {
-            lock.lock();
-            try {
-                pasajerosQueBajaron++;
-                System.out.println("[BARCO]: " + visitante.getNombre() + " se bajó del barco.");
-                
-                if (pasajerosQueBajaron == capacidad) {
-                    pasajerosAbordo = 0;
-                    pasajerosQueBajaron = 0;
-                    enViaje = false;
-                    System.out.println("[BARCO]: El barco quedó totalmente vacío y listo para otra vuelta.");
-                    esperaMaquina.signal(); // Libera a la máquina para su próximo ciclo
-                    esperaFila.signalAll(); // Llama a los de la fila
-                }
-            } finally {
-                lock.unlock();
-            }
+    // Simula la duración del juego.
+    private void simularMovimiento() {
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 
-    @Override
-    public void run() {
-        while (parque.estanActividadesAbiertas()) {
-            lock.lock();
-            try {
-                // El barco espera a llenarse.
-                while (pasajerosAbordo < capacidad && parque.estanActividadesAbiertas()) {
-                    esperaMaquina.await(1, TimeUnit.SECONDS);
-                }
-                if (parque.estanActividadesAbiertas()){
-                    enViaje = true;
-                    System.out.println("[BARCO]: El barco pirata se llenó y empieza a hamacarse.");
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            } finally {
-                lock.unlock();
+    // Detiene el barco y espera la evacuación.
+    private void detenerBarco() {
+        lock.lock();
+        try {
+            esperaViaje.signalAll();
+            while (pasajerosQueBajaron < capacidad && pasajerosAbordo == capacidad && parque.estanActividadesAbiertas()) {
+                esperaMaquina.await(500, TimeUnit.MILLISECONDS);
             }
-
-            //Simulación del viaje del barco.
-            try {
-                Thread.sleep(3000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-
-            lock.lock();
-            try {
-                System.out.println("[BARCO]: El barco se detiene por completo.");
-                esperaViaje.signalAll(); // Avisa a los pasajeros que el viaje terminó para que bajen.
-                
-                // Espera a que se bajen todos los pasajeros.
-                while (pasajerosQueBajaron < capacidad && pasajerosAbordo == capacidad && parque.estanActividadesAbiertas()) {
-                    esperaMaquina.await(500, TimeUnit.MILLISECONDS);
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            } finally {
-                lock.unlock();
-            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            lock.unlock();
         }
-        
-        // Al cierre del parque, se libera cualquier hilo remanente.
+    }
+
+    // Desbloquea a todos al cerrar el parque.
+    private void liberarVisitantesAtrapados() {
         lock.lock();
         try {
             esperaViaje.signalAll();

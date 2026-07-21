@@ -1,4 +1,4 @@
-package main;
+package Main;
 
 import ParqueAtraccion.Parque;
 import ParqueAtraccion.Atracciones.*;
@@ -19,7 +19,7 @@ public class Main {
         Thread reloj = new Thread(new Reloj(parque));
         reloj.start();
 
-        JuegoPremios premios = new JuegoPremios();
+        JuegoPremios premios = parque.getJuegoPremios();
         Thread encargadoPremios = new Thread(premios);
         encargadoPremios.setDaemon(true);
         encargadoPremios.start();
@@ -27,19 +27,17 @@ public class Main {
 
     // Lanza los controladores de las máquinas.
     private static void iniciarAtracciones(Parque parque) {
-        new Thread(new TrenTuristico(parque)).start();
-        new Thread(new AutitosChocadores(parque)).start();
-        new Thread(new BarcoPirata(parque)).start();
-        new Thread(new MontanaRusa(parque)).start();
-        new Thread(new RealidadVirtual(parque)).start();
-        new Thread(new Comedor(parque)).start();
+        new Thread(parque.getTrenTuristico()).start();
+        new Thread(parque.getAutitosChocadores()).start();
+        new Thread(parque.getBarcoPirata()).start();
+        new Thread(parque.getMontanaRusa()).start();
+        new Thread(parque.getRealidadVirtual()).start();
+        new Thread(parque.getComedor()).start();
     }
 
-    // Simula la llegada escalonada de personas.
+    // Simula la llegada escalonada de personas sin usar break.
     private static void recibirVisitantes(Parque parque) {
-        for (int i = 1; i <= 30; i++) {
-            if (!parque.isIngresoAbierto()) break;
-
+        for (int i = 1; i <= 30 && parque.isIngresoAbierto(); i++) {
             Visitante visitante = new Visitante("Visitante-" + i, parque);
             new Thread(visitante).start();
 

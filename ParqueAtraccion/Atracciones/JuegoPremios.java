@@ -1,44 +1,45 @@
 package ParqueAtraccion.Atracciones;
 
-import ParqueAtraccion.Parque;
 import hilos.Visitante;
 import java.util.concurrent.Exchanger;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-public class JuegoPremios {
-    private final Exchanger<String> mostrador = new Exchanger<>();
-    private final Parque parque;
+public class JuegoPremios implements Runnable {
+    private final Exchanger<String> intercambiador = new Exchanger<>();
 
-    public JuegoPremios(Parque parque) {
-        this.parque = parque;
+    // Ciclo del visitante para cambiar ficha por premio.
+    public void intercambiar(Visitante visitante) {
+        String ficha = "Ficha de " + visitante.getNombre();
+        System.out.println("[PREMIOS]: " + visitante.getNombre() + " se acerca con su ficha.");
+        realizarIntercambio(ficha);
     }
 
-    public void jugar(Visitante visitante) {
-        if (parque.estanActividadesAbiertas()) {
-            try {
-                // Intercambio seguro en un solo paso
-                String premio = mostrador.exchange("Ficha", 3, TimeUnit.SECONDS);
-                System.out.println("[PREMIOS]: " + visitante.getNombre() + " entregó su ficha y se ganó un " + premio + ".");
-            } catch (TimeoutException e) {
-                System.out.println("[PREMIOS]: " + visitante.getNombre() + " se cansó de esperar y se fue sin premio.");
-            } catch (InterruptedException e) {
-                System.out.println("[PREMIOS]: " + visitante.getNombre() + " se tuvo que ir por cierre del parque.");
-                Thread.currentThread().interrupt();
-            }
+    // Lógica del Exchanger.
+    private void realizarIntercambio(String ficha) {
+        try {
+            String premio = intercambiador.exchange(ficha, 2, TimeUnit.SECONDS);
+            System.out.println("[PREMIOS]: Recibido -> " + premio);
+        } catch (InterruptedException | TimeoutException e) {
+            System.out.println("[PREMIOS]: No había nadie para atender, el visitante se retiró.");
         }
     }
 
-    public void atender() {
-        while (parque.estanActividadesAbiertas()) {
-            try {
-                mostrador.exchange("Oso de peluche", 2, TimeUnit.SECONDS);
-            } catch (TimeoutException e) {
-                System.out.println("[PREMIOS]: El empleado se aburrió de esperar y sigue dando vueltas.");
-            } catch (InterruptedException e) {
-                System.out.println("[PREMIOS]: El empleado cierra el mostrador y se va.");
-                Thread.currentThread().interrupt();
-            }
+    // Ciclo del empleado del puesto.
+    @Override
+    public void run() {
+        while (true) {
+            atenderPuesto();
+        }
+    }
+
+    // Espera a un visitante para dar el peluche.
+    private void atenderPuesto() {
+        try {
+            String recibido = intercambiador.exchange("Oso de Peluche", 2, TimeUnit.SECONDS);
+            System.out.println("[EMPLEADO_PREMIOS]: Recibí una " + recibido + " y entregué un premio.");
+        } catch (InterruptedException | TimeoutException e) {
+            // El empleado espera en silencio.
         }
     }
 }

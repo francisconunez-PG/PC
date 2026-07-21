@@ -4,94 +4,128 @@ import ParqueAtraccion.Parque;
 import hilos.Visitante;
 
 public class MontanaRusa implements Runnable {
-    private int pasajerosAbordo = 0;
-    private int pasajerosQueBajaron = 0;
-    private boolean enViaje = false;
-    
-    private final int capacidad = 5;
     private final Parque parque;
+    private int asientosOcupados = 0;
+    private int pasajerosQueBajaron = 0;
+    private boolean enRecorrido = false;
+    private final int capacidadCarrito = 10;
 
     public MontanaRusa(Parque parque) {
         this.parque = parque;
     }
 
-    public synchronized void subir(Visitante visitante) {
+    // Ciclo de vida del visitante en la montaña.
+    public void subir(Visitante visitante) {
+        boolean pudoAbordar = false;
+
+        synchronized (this) {
+            pudoAbordar = intentarAbordar(visitante);
+            if (pudoAbordar) {
+                esperarFinDelRecorrido();
+            }
+        }
+
+        if (pudoAbordar) {
+            bajarDelCarrito(visitante);
+        }
+    }
+
+    // Gestiona el abordaje y avisa cuando está lleno.
+    private boolean intentarAbordar(Visitante visitante) {
+        boolean exito = false;
         try {
-            // El visitante espera en la fila si el carro está lleno o dando la vuelta
-            while ((pasajerosAbordo >= capacidad || enViaje) && parque.estanActividadesAbiertas()) {
-                wait(2000);
+            while ((asientosOcupados >= capacidadCarrito || enRecorrido) && parque.estanActividadesAbiertas()) {
+                this.wait(1000);
             }
-
-            if (!parque.estanActividadesAbiertas()) return;
-
-            pasajerosAbordo++;
-            System.out.println("[MONTAÑA]: " + visitante.getNombre() + " se subió al carro (" + pasajerosAbordo + "/" + capacidad + ").");
-
-            if (pasajerosAbordo == capacidad) {
-                notifyAll(); // Le avisa al hilo de la máquina que el carro se llenó y puede arrancar.
+            if (parque.estanActividadesAbiertas()) {
+                asientosOcupados++;
+                if (asientosOcupados == capacidadCarrito) {
+                    this.notifyAll();
+                }
+                exito = true;
             }
-
-            // El visitante se queda "dormido" durante el viaje.
-            while (enViaje || pasajerosAbordo < capacidad) {
-                if (!parque.estanActividadesAbiertas()) return;
-                wait();
-            }
-
-            // Termina el viaje y se bajan de a uno
-            pasajerosQueBajaron++;
-            System.out.println("[MONTAÑA]: " + visitante.getNombre() + " terminó el viaje y se bajó.");
-
-            // El último en bajarse se encarga de resetear el carro y avisarle a los de la fila.
-            if (pasajerosQueBajaron == capacidad) {
-                pasajerosAbordo = 0;
-                pasajerosQueBajaron = 0;
-                enViaje = false;
-                System.out.println("[MONTAÑA]: El carro está vacío y listo para un nuevo grupo.");
-                notifyAll(); // Despierta a los de la fila
-            }
-
         } catch (InterruptedException e) {
-            System.out.println("[MONTAÑA]: " + visitante.getNombre() + " se tuvo que ir por una interrupción.");
+            Thread.currentThread().interrupt();
+        }
+        return exito;
+    }
+
+    // Bloquea al pasajero hasta que termine la vuelta.
+    private void esperarFinDelRecorrido() {
+        try {
+            while ((enRecorrido || asientosOcupados < capacidadCarrito) && parque.estanActividadesAbiertas()) {
+                this.wait(1000);
+            }
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
     }
 
+    // Gestiona la salida y reinicia el carrito.
+    private void bajarDelCarrito(Visitante visitante) {
+        synchronized (this) {
+            pasajerosQueBajaron++;
+            if (pasajerosQueBajaron == capacidadCarrito) {
+                asientosOcupados = 0;
+                pasajerosQueBajaron = 0;
+                enRecorrido = false;
+                this.notifyAll();
+            }
+        }
+    }
+
+    // Ciclo de vida del carrito.
     @Override
     public void run() {
         while (parque.estanActividadesAbiertas()) {
-            synchronized (this) {
-                try {
-                    // Espera hasta que se suban los 5 visitantes.
-                    while (pasajerosAbordo < capacidad && parque.estanActividadesAbiertas()) {
-                        wait(1000);
-                    }
-                    if (!parque.estanActividadesAbiertas()) break;
-
-                    enViaje = true;
-                    System.out.println("[MONTAÑA]: ¡El tren de la montaña rusa arranca!");
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            }
-
-            // Simula el tiempo de la vuelta.
-            try {
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-
-            synchronized (this) {
-                System.out.println("[MONTAÑA]: El viaje terminó. El tren frena.");
-                notifyAll(); // Despierta a los 5 pasajeros para que se bajen.
-                
-                // Espera a que los 5 se bajen antes de abrir de nuevo las puertas.
-                while (pasajerosQueBajaron < capacidad && pasajerosAbordo == capacidad && parque.estanActividadesAbiertas()) {
-                    try { wait(500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
-                }
+            if (esperarPasajeros()) {
+                realizarViaje();
+                finalizarViaje();
             }
         }
-        synchronized (this) { notifyAll(); } // Libera si cierra el parque.
+        liberarPasajerosRestantes();
+    }
+
+    // Mantiene el carrito detenido hasta llenarse.
+    private synchronized boolean esperarPasajeros() {
+        boolean listo = false;
+        try {
+            while (asientosOcupados < capacidadCarrito && parque.estanActividadesAbiertas()) {
+                this.wait(1000);
+            }
+            if (parque.estanActividadesAbiertas()) {
+                enRecorrido = true;
+                listo = true;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return listo;
+    }
+
+    // Simula el tiempo en la vía.
+    private void realizarViaje() {
+        try {
+            Thread.sleep(2500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    // Frena el carrito y habilita la bajada.
+    private synchronized void finalizarViaje() {
+        this.notifyAll();
+        try {
+            while (pasajerosQueBajaron < capacidadCarrito && asientosOcupados == capacidadCarrito && parque.estanActividadesAbiertas()) {
+                this.wait(1000);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    // Evita bloqueos al cerrar el parque.
+    private synchronized void liberarPasajerosRestantes() {
+        this.notifyAll();
     }
 }

@@ -3,86 +3,96 @@ package ParqueAtraccion.Atracciones;
 import ParqueAtraccion.Parque;
 import hilos.Visitante;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 
 public class RealidadVirtual implements Runnable {
-    // Semáforos de recursos
-    private final Semaphore visores = new Semaphore(10, true);
-    private final Semaphore manoplas = new Semaphore(20, true);
-    private final Semaphore bases = new Semaphore(10, true);
-    private final Semaphore guardia = new Semaphore(1, true);
-    
-    // Semáforos para sincronizar el Servidor con los Jugadores.
-    private final Semaphore jugadoresListos = new Semaphore(0); //Avisa al servidor que hay jugadores listos para jugar.
-    private final Semaphore finPartida = new Semaphore(0); //Avisa a los jugadores que terminó la partida y pueden devolver el equipo.
-    
     private final Parque parque;
+    private final int capacidadSala = 5;
+    private final Semaphore cascos = new Semaphore(capacidadSala, true);
+    private final Semaphore jugadoresListos = new Semaphore(0);
+    private final Semaphore juegoTerminado = new Semaphore(0);
 
     public RealidadVirtual(Parque parque) {
         this.parque = parque;
     }
 
+    // Ciclo del jugador en la sala VR.
     public void jugar(Visitante visitante) {
-        boolean tieneEquipo = false;
+        if (ponerseCasco(visitante)) {
+            esperarFinDelJuego();
+            devolverCasco();
+        }
+    }
+
+    // Adquiere el semáforo y avisa que está listo.
+    private boolean ponerseCasco(Visitante visitante) {
+        boolean exito = false;
         try {
-            guardia.acquire();
-            try {
-                if (visores.availablePermits() >= 1 && manoplas.availablePermits() >= 2 && bases.availablePermits() >= 1) {
-                    visores.acquire(1);
-                    manoplas.acquire(2);
-                    bases.acquire(1);
-                    tieneEquipo = true;
+            if (parque.estanActividadesAbiertas()) {
+                cascos.acquire();
+                if (parque.estanActividadesAbiertas()) {
+                    jugadoresListos.release();
+                    exito = true;
+                } else {
+                    cascos.release();
                 }
-            } finally {
-                guardia.release();
-            }
-            
-            if (tieneEquipo) {
-                System.out.println("[RV]: " + visitante.getNombre() + " se colocó el equipo. Esperando entorno virtual...");
-                
-                // Le avisa al servidor que él está listo
-                jugadoresListos.release();
-                
-                // Espera a que el servidor corra el juego y le avise que terminó
-                finPartida.acquire();
-                
-                visores.release(1);
-                manoplas.release(2);
-                bases.release(1);
-                System.out.println("[RV]: " + visitante.getNombre() + " se quitó el equipo y lo devolvió.");
-            } else {
-                System.out.println("[RV]: " + visitante.getNombre() + " no encontró equipo completo y se fue.");
             }
         } catch (InterruptedException e) {
-            System.out.println("[RV]: " + visitante.getNombre() + " fue interrumpido en el entorno virtual.");
+            Thread.currentThread().interrupt();
+        }
+        return exito;
+    }
+
+    // Espera la señal del servidor para terminar.
+    private void esperarFinDelJuego() {
+        try {
+            juegoTerminado.acquire();
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
     }
 
+    // Devuelve el casco para el siguiente grupo.
+    private void devolverCasco() {
+        cascos.release();
+    }
+
+    // Ciclo del servidor VR.
     @Override
     public void run() {
         while (parque.estanActividadesAbiertas()) {
-            try {
-                // El servidor espera hasta que haya al menos 1 jugador listo
-                if (jugadoresListos.tryAcquire(2, TimeUnit.SECONDS)) {
-                    
-                    // Toma todos los demás permisos de los que llegaron en este momento exacto
-                    int jugadoresEnEstaPartida = 1 + jugadoresListos.drainPermits();
-                    
-                    System.out.println("[RV]: === Servidor iniciando renderizado con " + jugadoresEnEstaPartida + " jugadores ===");
-                    Thread.sleep(3000); // El servidor hace el viaje
-                    System.out.println("[RV]: === Sesión de simulación finalizada. Desconectando jugadores ===");
-                    
-                    // Libera la cantidad EXACTA de permisos de los jugadores que participaron
-                    finPartida.release(jugadoresEnEstaPartida);
-                    
-                    Thread.sleep(500); // Da tiempo a que devuelvan las cosas
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
+            int jugadoresActuales = esperarJugadores();
+            if (jugadoresActuales > 0) {
+                iniciarPartida(jugadoresActuales);
             }
         }
-        finPartida.release(10); // Cierre de emergencia
+        liberarAtrapados();
+    }
+
+    // Espera hasta que haya al menos un jugador listo.
+    private int esperarJugadores() {
+        int reunidos = 0;
+        try {
+            Thread.sleep(1000);
+            reunidos = jugadoresListos.drainPermits();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return reunidos;
+    }
+
+    // Corre la simulación para los jugadores reunidos.
+    private void iniciarPartida(int cantidad) {
+        System.out.println("[VR]: Iniciando sesión con " + cantidad + " jugadores.");
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        juegoTerminado.release(cantidad);
+    }
+
+    // Evita interbloqueos al cierre.
+    private void liberarAtrapados() {
+        juegoTerminado.release(capacidadSala);
     }
 }
